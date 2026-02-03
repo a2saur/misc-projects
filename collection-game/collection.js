@@ -114,6 +114,8 @@ class PlayerSprite {
     }
 
     draw(){
+      // let drawX = this.x-(cTILE_SIZE/2);
+      // let drawY = this.y-(cTILE_SIZE/2);
       switch(this.dir){
         case 1:
           ctx.drawImage(this.animSetL.getFrame(), this.x, this.y);
@@ -229,7 +231,7 @@ const playerUp = new AnimImgSet("./images/player/char-walk-up", 4, playerFrameSp
 const playerDown = new AnimImgSet("./images/player/char-walk-down", 4, playerFrameSpeed);
 const playerDefault = new AnimImgSet("./images/player/main-char", 1, playerFrameSpeed);
 
-let player = new PlayerSprite(playerLeft, playerRight, playerUp, playerDown, playerDefault, 120, 160);
+let player = new PlayerSprite(playerLeft, playerRight, playerUp, playerDown, playerDefault, 144, 144);
 
 /* Generate map */
 const cMAX_BLOCK_RADIUS = int((cMAP_WIDTH + cMAP_HEIGHT)/20);
@@ -409,19 +411,35 @@ function draw(){
       }
       if (keyPress == "ArrowLeft"){
         // move left
-        cameraX -= moveAmount;
+        if (cameraX - moveAmount > 0){
+          cameraX -= moveAmount;
+        } else {
+          cameraX = 0;
+        }
         player.dir = 1;
       } else if (keyPress == "ArrowRight"){
         // move right
-        cameraX += moveAmount;
+        if (cameraX + moveAmount < cTILE_SIZE*cMAP_WIDTH){
+          cameraX += moveAmount;
+        } else {
+          cameraX = cTILE_SIZE*cMAP_WIDTH;
+        }
         player.dir = 3;
       } else if (keyPress == "ArrowUp"){
         // move up
-        cameraY -= moveAmount;
+        if (cameraY - moveAmount > 0){
+          cameraY -= moveAmount;
+        } else {
+          cameraY = 0;
+        }
         player.dir = 2;
       } else if (keyPress == "ArrowDown"){
         // move down
-        cameraY += moveAmount;
+        if (cameraY + moveAmount < cTILE_SIZE*cMAP_HEIGHT){
+          cameraY += moveAmount;
+        } else {
+          cameraY = cTILE_SIZE*cMAP_HEIGHT;
+        }
         player.dir = 4;
       } else if (keyPress == ""){
         player.dir = 0;
