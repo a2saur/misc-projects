@@ -29,6 +29,11 @@ const cTASK_TYPES = ["package delivery", "letter delivery", "transportation tick
 const cNPC_MOODS = ["default", "grumpy", "chatty"];
 const cTASK_HANDLING_TYPES = ["default", "default", "default", "error"];
 
+const cPROFILE_Y_START = cCUST_Y_START*1.1;
+const cPROFILE_WIDTH = (cSCREEN_WIDTH-cCUST_SIZE)-((cSCREEN_WIDTH-cCUST_SIZE)/4);
+const cPROFILE_HEIGHT = cSCREEN_HEIGHT-cPROFILE_Y_START-cNAV_HEIGHT-(cDESK_HEIGHT/2);
+const cPROFILE_PADDING = 25;
+
 // Resize stuff on window resize
 function resizeCanvas() {
   const maxWidth = window.innerWidth * 0.8;
@@ -48,8 +53,6 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-
-
 /* Helper functions */
 function randrange(minNum, maxNum){
   return Math.floor(Math.random() * (maxNum-minNum)) + minNum;
@@ -62,6 +65,43 @@ function int(floatVal){
 function getRandomChoice(arr){
   return arr[randrange(0, arr.length)];
 }
+
+function getRandomNPCName() {
+  let vowel = (randrange(0, 2) == 0);
+  let nameLen = randrange(3, 10);
+  let npcName = "";
+  for (let i=0; i < nameLen; i++){
+    if (vowel){
+      npcName += getRandomChoice(["a", "e", "i", "o", "u", "y"]);
+    } else {
+      npcName += getRandomChoice(["b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z"])
+    }
+
+    vowel = !vowel;
+  }
+
+  return npcName;
+}
+
+function getRandomNPCGlyphName(glyphs) {
+  let nameLen = randrange(1, 5);
+  let npcName = "";
+  npcName += getRandomChoice(glyphs);
+  npcName += " ";
+  
+  let newGlyph = "";
+  let prevGlyph = "";
+  for (let i=0; i < nameLen; i++){
+    while (newGlyph == prevGlyph){
+      newGlyph = getRandomChoice(glyphs);
+    }
+    npcName += newGlyph;
+    npcName += " ";
+    prevGlyph = newGlyph;
+  }
+  return npcName;
+}
+
 
 /* Class definitions */
 class Sprite {
@@ -150,14 +190,20 @@ class TextSpeechBubble {
     return (!this.running) && this.currentText[0] != "";
   }
 
+  checkNewLine(){
+    ctx.font = this.fontSize.toString()+"px sans-serif";
+    let textWidth = ctx.measureText(this.currentText[this.lineIdx]+this.textWords[this.wordIdx]).width;
+
+    if (textWidth > this.maxWidth){
+      // new line
+      this.currentText.push("");
+      this.lineIdx++;
+    }
+  }
+
   skip(){
     for (let i = this.currIdx; i < this.text.length; i++){
-      if (ctx.measureText(this.currentText[this.lineIdx]+this.text[i]).width > this.maxWidth){
-        // new line
-        this.currentText.push("");
-        this.lineIdx++;
-      }
-
+      this.checkNewLine();
       this.currentText[this.lineIdx] += this.text[i];
     }
     this.running = false;
@@ -182,12 +228,7 @@ class TextSpeechBubble {
       ctx.font = this.fontSize.toString()+"px sans-serif";
       let textWidth = ctx.measureText(this.currentText[this.lineIdx]).width;
       let speechBubbleWidth = textWidth+(this.padding*2);
-
-      if (ctx.measureText(this.currentText[this.lineIdx]+this.textWords[this.wordIdx]).width > this.maxWidth-this.h){
-        // wrap
-        this.currentText.push("");
-        this.lineIdx++;
-      }
+      this.checkNewLine();
 
       ctx.strokeStyle = this.backgroundColor;
       ctx.fillStyle = this.backgroundColor;
@@ -379,6 +420,149 @@ class Button {
   }
 }
 
+class AnimatedTextBox {
+  constructor(backgroundColor, textColor, text, x, y, w, h, fontSize, animType="from-bottom", activeScene="", writeTxtOnAnimDone=true, framesPerChar=3, maxMoveAmount=-1){
+    this.backgroundColor = backgroundColor;
+    this.textColor = textColor;
+    this.text = text;
+    this.textWords = text.split(" ");
+    this.x = x;
+    this.y = y;
+    this.h = h;
+    this.w = w;
+
+    this.currX = x;
+    this.currY = y;
+
+    this.writeTxtOnAnimDone = writeTxtOnAnimDone;
+    this.animRunning = false;
+    this.finishedAnim = false;
+    this.txtRunning = false;
+    this.currentText = [""];
+    this.framesPerChar = framesPerChar;
+    this.frames = 0;
+    this.lineIdx = 0;
+    this.wordIdx = 0;
+    this.currIdx = 0;
+    this.padding = this.w*0.05;
+    this.fontSize = fontSize;
+    this.activeScene = activeScene;
+    this.animType = animType;
+
+    if (this.animType == "from-bottom"){
+      this.currY = cSCREEN_HEIGHT;
+    }
+
+
+    if (maxMoveAmount == -1){
+      this.maxMoveAmount = Math.abs((this.y-this.currY)+(this.x-this.currX))/15;
+    } else {
+      this.maxMoveAmount = maxMoveAmount;
+    }
+  }
+
+  startRunning(){
+    this.animRunning = true;
+    this.finishedAnim = false;
+  }
+
+  checkNewLine(){
+    ctx.font = this.fontSize.toString()+"px sans-serif";
+    let textWidth = ctx.measureText(this.currentText[this.lineIdx]+this.textWords[this.wordIdx]).width;
+
+    if (textWidth > this.maxWidth){
+      // new line
+      this.currentText.push("");
+      this.lineIdx++;
+    }
+  }
+
+  skip(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.txtRunning){
+        for (let i = this.currIdx; i < this.text.length; i++){
+          this.checkNewLine();
+          this.currentText[this.lineIdx] += this.text[i];
+        }
+        this.txtRunning = false;
+      }
+    }
+  }
+
+  finishAnim(){
+    this.animRunning = false;
+    this.finishedAnim = true;
+
+    if (this.writeTxtOnAnimDone){
+      this.txtRunning = true;
+    } else {
+      this.skip(this.activeScene);
+    }
+  }
+
+  drawTxt(){
+    if (this.txtRunning || this.currentText[0] != ""){
+      if (this.txtRunning) {
+        if (this.frames % this.framesPerChar == 0){
+          if (this.currIdx < this.text.length){
+            if (this.text[this.currIdx] == " "){
+              this.wordIdx++;
+            }
+            this.currentText[this.lineIdx] += this.text[this.currIdx];
+            this.currIdx++;
+          } else {
+            this.txtRunning = false;
+          }
+        }
+      }
+
+      ctx.font = this.fontSize.toString()+"px sans-serif";
+      this.checkNewLine();
+
+      ctx.fillStyle = this.textColor;
+      for (let i=0; i <= this.lineIdx; i++){
+        ctx.fillText(this.currentText[i], this.x+this.padding, this.y+this.padding+(this.fontSize*(i+1)));
+      }
+    }
+  }
+
+  draw(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.animRunning || this.finishedAnim){
+        ctx.strokeStyle = this.backgroundColor;
+        ctx.fillStyle = this.backgroundColor;
+        ctx.beginPath();
+        if (this.animRunning){
+          // update animation
+          if (this.animType == "from-bottom"){
+            let newY = (this.currY+this.y)/2;
+            if (Math.abs(this.currY-newY) > this.maxMoveAmount){
+              this.currY = this.currY-(this.maxMoveAmount*Math.sign(this.currY-newY));
+            } else {
+              this.currY = newY;
+            }
+
+            if (Math.abs(this.currY-this.y) < 15){
+              this.currY = this.y;
+              
+              // done
+              this.finishAnim();
+            }
+          }
+          ctx.fillRect(this.currX, this.currY, this.w, this.h);
+        } else {
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+        }
+        ctx.stroke();
+        ctx.fill();
+  
+        this.drawTxt();
+        this.frames++;
+      }
+    }
+  }
+}
+
 // Preset stuff
 
 
@@ -395,6 +579,7 @@ let scene = "main"; // main, handbook, delivery, cat
 
 // Task generation
 let npcType = "";
+let npcName = "";
 let npcMood = "";
 let npcVariation = 0;
 let taskType = "";
@@ -458,14 +643,30 @@ npc_sprite_opts["mnem"] = mnem_sprites;
 npc_sprite_opts["osv"] = osv_sprites;
 npc_sprite_opts["eng"] = eng_sprites;
 
+let npcVocab = {}
+npcVocab["kish"] = [""];
+npcVocab["mu"] = [""];
+npcVocab["plu"] = ["address", "big", "hello", "how", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
+npcVocab["mnem"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
+npcVocab["osv"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
+npcVocab["eng"] = [""];
+
+let glyphNPCs = ["mu", "plu", "osv"];
+
 // text bubbles
 let all_skippable = [];
+let all_popups = [];
 // textBubble = new TextSpeechBubble("#FFF", "#000", "Ello whats up how are you doing? Can I help ya out? Is this text too long? Idk :3 OwO :O", 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, 2);
-textBubble = new MultiTextSpeechBubble("#FFF", "#000", ["Ello whats up how are you doing?", "Can I help ya out?", "Is this text too long? Idk :3 OwO :O"], 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, "main", 2);
+let textBubble = new MultiTextSpeechBubble("#FFF", "#000", ["Ello whats up how are you doing? Can I help ya out? Is this text too long? Idk"], 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, "main", 2);
 all_skippable.push(textBubble);
-all_sprites.push(textBubble);
-
+all_popups.push(textBubble);
 textBubble.startRunning();
+
+let profileInfoBox = new AnimatedTextBox("#78f6ff", "#000", "AAAA", cSCREEN_WIDTH-cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_Y_START+cPROFILE_PADDING, cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_HEIGHT+cPROFILE_PADDING, 50, "from-bottom", "main", true, 5)
+all_skippable.push(profileInfoBox);
+all_popups.push(profileInfoBox);
+profileInfoBox.startRunning();
+
 
 // Get Keys
 document.addEventListener("keydown", function (e){
@@ -558,8 +759,6 @@ document.addEventListener("touchend", function(e) {
 function draw(){
     ctx.fillStyle = "#1c1c32";
     ctx.fillRect(0, 0, cSCREEN_WIDTH, cSCREEN_HEIGHT);
-    ctx.fillStyle = "#515151";
-    ctx.fillRect(0, cSCREEN_HEIGHT-cNAV_HEIGHT, cSCREEN_WIDTH, cNAV_HEIGHT);
     // ctx.fillStyle = "#dedee7";
     // ctx.fillRect(0, 0, cSCREEN_WIDTH, cTEXT_BOX_HEIGHT);
     
@@ -579,10 +778,6 @@ function draw(){
     //     }
     //     i++;
     // }
-
-    all_buttons.forEach((item) => {
-      item.draw();
-    });
     
     all_sprites.forEach((item) => {
       item.draw(scene);
@@ -593,11 +788,21 @@ function draw(){
     if (scene == "main"){
       ctx.fillStyle = "#817c7a";
       ctx.fillRect(0, cDESK_Y_START, cSCREEN_WIDTH, cDESK_HEIGHT);
+      
+      // ctx.fillStyle = "#78f6ff";
+      // ctx.fillRect(cSCREEN_WIDTH-cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_Y_START+cPROFILE_PADDING, cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_HEIGHT+cPROFILE_PADDING);
 
       // check if new customer
       if (npcType == ""){
         // new customer!
         npcType = getRandomChoice(cNPC_TYPES);
+        if (glyphNPCs.includes(npcType)){
+          npcName = getRandomNPCGlyphName(npcVocab[npcType]);
+        } else {
+          npcName = getRandomNPCName();
+        }
+
+        npcName = getRandomNPCName()
         npcMood = getRandomChoice(cNPC_MOODS);
         
         taskType = getRandomChoice(cTASK_TYPES);
@@ -608,6 +813,18 @@ function draw(){
         npc_sprite_opts[npcType][npcVariation].show();
       }
     }
+
+    all_popups.forEach((item) => {
+      item.draw(scene);
+    })
+
+    // nav bar
+    ctx.fillStyle = "#515151";
+    ctx.fillRect(0, cSCREEN_HEIGHT-cNAV_HEIGHT, cSCREEN_WIDTH, cNAV_HEIGHT);
+
+    all_buttons.forEach((item) => {
+      item.draw();
+    });
 }
 
 let game = setInterval(draw, 20);
