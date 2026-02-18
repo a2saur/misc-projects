@@ -1,7 +1,10 @@
 import numpy as np
 from random import randrange
 import matplotlib.pyplot as plt
-from blur import blur
+from arr_effects import *
+import time
+
+startTime = time.time()
 
 width = 500
 height = 500
@@ -20,8 +23,24 @@ for b in range(randrange(int(max_num_blocks/2), max_num_blocks)):
 			if dist < r:
 				if 0 < x < width and 0 < y < height:
 					map[x, y] += 1
-	
-plt.imshow(blur(map, 10), cmap="terrain")
+
+
+midTime = time.time()
+print("Time taken:", midTime-startTime)
+
+blurredTerrain = blur(map, 10)
+blurredTerrain = roughen(blurredTerrain)
+
+endTime = time.time()
+print("Time taken:", endTime-startTime)
+
+plt.imshow(blurredTerrain, cmap="terrain")
+plt.gca().invert_yaxis()
+plt.colorbar()
+plt.show()
+
+plt.clf()
+plt.imshow(tile_map(blurredTerrain), cmap="terrain")
 plt.gca().invert_yaxis()
 plt.colorbar()
 plt.show()

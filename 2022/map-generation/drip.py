@@ -1,10 +1,14 @@
-import pandas as pd
+# import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import time
+from arr_effects import tile_map
 
-cWIDTH = 150
-cHEIGHT = 150
+startTime = time.time()
+
+cWIDTH = 500
+cHEIGHT = 500
 cSEEDS = 5
 cSHIFT = 1
 cSINK = 1.5
@@ -56,6 +60,8 @@ map = np.zeros((cWIDTH, cHEIGHT))
 start_val = random.randrange(20, 40)
 # print(start_val)
 spread(map, (random.randrange(10, cWIDTH-10), random.randrange(10, cHEIGHT-10)), start_val)
+spread(map, (random.randrange(10, cWIDTH-10), random.randrange(10, cHEIGHT-10)), start_val)
+spread(map, (random.randrange(10, cWIDTH-10), random.randrange(10, cHEIGHT-10)), start_val)
 
 sunken = np.zeros((cWIDTH, cHEIGHT))
 sink_start_val = random.randrange(10, 20)
@@ -67,7 +73,17 @@ for x in range(cWIDTH):
     map[x, y] -= sunken[x, y]
 
 to_plot = map.transpose()
+
+endTime = time.time()
+print("Time taken:", endTime-startTime)
+
 plt.imshow(to_plot)
+plt.gca().invert_yaxis()
+plt.colorbar()
+plt.show()
+
+plt.clf()
+plt.imshow(tile_map(to_plot))
 plt.gca().invert_yaxis()
 plt.colorbar()
 plt.show()
