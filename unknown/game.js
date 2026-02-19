@@ -24,7 +24,7 @@ const cCUST_SIZE = 700;
 const cCUST_X_START = 50;
 const cCUST_Y_START = cSCREEN_HEIGHT-cNAV_HEIGHT-cCUST_SIZE-(cDESK_HEIGHT/2);
 
-const cNPC_TYPES = ["mnem", "plu", "mu", "osv", "eng", "kish"];
+const cNPC_TYPES = ["mu", "plu", "osv", "eng", "kish", "mnem"];
 const cTASK_TYPES = ["package delivery", "letter delivery", "transportation ticket"];
 const cNPC_MOODS = ["default", "grumpy", "chatty"];
 const cTASK_HANDLING_TYPES = ["", "", "", " error"];
@@ -35,6 +35,14 @@ const cPROFILE_HEIGHT = cSCREEN_HEIGHT-cPROFILE_Y_START-cNAV_HEIGHT-(cDESK_HEIGH
 const cPROFILE_PADDING = 25;
 
 const cGLYPH_HEIGHT = 100;
+const cGLYPH_BOOK_HEIGHT = 75;
+const cBOOK_PADDING = 25;
+
+const cPAGE_HEIGHT = (cSCREEN_HEIGHT-cNAV_HEIGHT)-100;
+const cPAGE_WIDTH = (cSCREEN_WIDTH-100)/2;
+const cPAGE_X_START = 50;
+const cPAGE_Y_START = 50;
+const cPAGE_BTN_SIZE = 100;
 
 // Resize stuff on window resize
 function resizeCanvas() {
@@ -104,7 +112,7 @@ function getRandomNPCGlyphName(glyphs) {
   return npcName;
 }
 
-
+console.log("Defining classes");
 /* Class definitions */
 class Sprite {
   constructor(imgName, numImgs, framesPerUpdate, x, y, w, h, showing=true, activeScene="") {
@@ -248,6 +256,20 @@ class TextSpeechBubble {
     }
   }
 
+  skipIfClicked(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      ctx.font = this.fontSize.toString()+"px sans-serif";
+      let textWidth = ctx.measureText(this.currentText[this.lineIdx]).width;
+      let speechBubbleWidth = textWidth+(this.padding*2);
+      let speechBubbleHeight = this.h*(this.lineIdx+1)
+      if (mouseX > this.x && mouseX < this.x+speechBubbleWidth){
+        if (mouseY > this.y && mouseY < this.y+speechBubbleHeight){
+          this.skip(sceneName);
+        }
+      }
+    }
+  }
+
   draw(sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
@@ -338,6 +360,24 @@ class GlyphTextSpeechBubble {
     }
   }
 
+  skipIfClicked(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      let speechBubbleWidth;
+      if (this.currIdx < this.maxNumGlyphs){
+        speechBubbleWidth = this.currIdx*cGLYPH_HEIGHT;
+      } else {
+        speechBubbleWidth = this.maxNumGlyphs*cGLYPH_HEIGHT;
+      }
+      let speechBubbleHeight = (parseInt(this.currIdx/this.maxNumGlyphs)+1)*cGLYPH_HEIGHT;
+
+      if (mouseX > this.x && mouseX < this.x+speechBubbleWidth){
+        if (mouseY > this.y && mouseY < this.y+speechBubbleHeight){
+          this.skip(sceneName);
+        }
+      }
+    }
+  }
+
   draw(sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
@@ -391,7 +431,6 @@ class CharTextSpeechBubble {
     this.y = y;
     this.padding = cGLYPH_HEIGHT*0.2;
     this.maxNumChars = parseInt((maxWidth-(this.padding*2))/(cGLYPH_HEIGHT*0.75));
-    console.log(this.maxNumChars*(cGLYPH_HEIGHT*0.75));
 
     this.running = false;
     this.framesPerChar = framesPerChar;
@@ -423,6 +462,24 @@ class CharTextSpeechBubble {
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
         this.currIdx = this.textWords.length;
+      }
+    }
+  }
+
+  skipIfClicked(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      let speechBubbleWidth;
+      if (this.currIdx < this.maxNumChars){
+        speechBubbleWidth = this.currIdx*(cGLYPH_HEIGHT*0.75);
+      } else {
+        speechBubbleWidth = this.maxNumChars*(cGLYPH_HEIGHT*0.75);
+      }
+      let speechBubbleHeight = (parseInt(this.currIdx/this.maxNumChars)+1)*cGLYPH_HEIGHT;
+
+      if (mouseX > this.x && mouseX < this.x+speechBubbleWidth){
+        if (mouseY > this.y && mouseY < this.y+speechBubbleHeight){
+          this.skip(sceneName);
+        }
       }
     }
   }
@@ -553,6 +610,10 @@ class MultiTextSpeechBubble {
     }
   }
 
+  skipIfClicked(mouseX, mouseY, sceneName){
+    this.textBubbles[this.currTextBubble].skipIfClicked(mouseX, mouseY, sceneName);
+  }
+
   draw(sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
@@ -606,6 +667,15 @@ class Button {
     this.showing = showing;
   }
 
+
+  show() {
+    this.showing = true;
+  }
+
+  hide() {
+    this.showing = false;
+  }
+
   is_clicked(mouseX, mouseY, sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
@@ -651,7 +721,7 @@ class Button {
     return this.clickedOn;
   }
 
-  draw(){
+  draw(sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
         if (this.clickedOn){
@@ -715,6 +785,7 @@ class AnimatedTextBox {
     this.currIdx = 0;
     this.padding = this.w*0.05;
     this.fontSize = fontSize;
+    this.originalFS = fontSize;
     this.activeScene = activeScene;
     this.animType = animType;
 
@@ -727,6 +798,10 @@ class AnimatedTextBox {
       this.maxMoveAmount = Math.abs((this.y-this.currY)+(this.x-this.currX))/15;
     } else {
       this.maxMoveAmount = maxMoveAmount;
+    }
+
+    if (this.animType == "none"){
+      this.finishAnim();
     }
   }
 
@@ -767,6 +842,16 @@ class AnimatedTextBox {
     }
   }
 
+  skipIfClicked(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (mouseX > this.x && mouseX < this.x+this.w){
+        if (mouseY > this.y && mouseY < this.y+this.h){
+          this.skip(sceneName);
+        }
+      }
+    }
+  }
+
   finishAnim(){
     this.animRunning = false;
     this.finishedAnim = true;
@@ -774,12 +859,24 @@ class AnimatedTextBox {
     if (this.writeTxtOnAnimDone){
       this.txtRunning = true;
     } else {
+      this.txtRunning = true;
       this.skip(this.activeScene);
     }
   }
 
+  resetText(newText){
+    this.text = newText;
+    this.textWords = newText.split(" ");
+    this.currentText = [""];
+    this.lineIdx = 0;
+    this.wordIdx = 0;
+    this.currIdx = 0;
+    this.txtRunning = true;
+    this.skip(this.activeScene);
+  }
+
   drawTxt(){
-    if (this.txtRunning || this.currentText[0] != ""){
+    if (this.txtRunning || this.currentText[0] != "" || this.currentText.length > 1){
       if (this.txtRunning) {
         if (this.frames % this.framesPerChar == 0){
           this.checkNewLine();
@@ -795,9 +892,22 @@ class AnimatedTextBox {
         }
       }
 
-      ctx.font = this.fontSize.toString()+"px sans-serif";
-
+      
+      let textWidth;
       ctx.fillStyle = this.textColor;
+      this.fontSize = this.originalFS;
+      let noShrink = true;
+      for (let i=0; i <= this.lineIdx; i++){
+        ctx.font = this.fontSize.toString()+"px sans-serif";
+        textWidth = ctx.measureText(this.currentText[i]).width;
+        if (textWidth > (this.w-(this.padding*2.5))){
+          noShrink = false;
+          this.fontSize = this.fontSize*(this.w-(this.padding*2.5))/textWidth;
+        }
+      }
+      if (noShrink) this.fontSize = this.originalFS;
+
+      ctx.font = this.fontSize.toString()+"px sans-serif";
       for (let i=0; i <= this.lineIdx; i++){
         ctx.fillText(this.currentText[i], this.x+this.padding, this.y+this.padding+(this.fontSize*(i+1)));
       }
@@ -841,6 +951,156 @@ class AnimatedTextBox {
   }
 }
 
+class TextInputBox {
+  constructor(x, y, w, h, activeScene="", showing=true){
+    this.x = x;
+    this.y = y;
+    this.h = h;
+    this.w = w;
+    this.padding = this.h*0.15;
+    
+    this.activeScene = activeScene;
+    this.showing = showing;
+
+    this.editing = false;
+    this.currentText = "";
+    this.maxFontSize = this.h-(this.padding*2);
+
+    this.editing = false;
+    this.hovering = false;
+
+    this.frames = 0;
+    this.lineShow = false;
+  }
+
+  check_hovering(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (mouseX > this.x && mouseX < this.x+this.w){
+          if (mouseY > this.y && mouseY < this.y+this.h){
+            this.hovering = true;
+            return true;
+          }
+        }
+      }
+    }
+    this.hovering = false;
+    return false;
+  }
+
+  check_clicked(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (mouseX > this.x && mouseX < this.x+this.w){
+          if (mouseY > this.y && mouseY < this.y+this.h){
+            if (this.editing){
+              this.editing = false;
+            } else {
+              this.editing = true;
+            }
+            return true;
+          }
+        }
+      }
+    }
+    this.editing = false;
+    return false;
+  }
+
+  check_keypress(keyPressed){
+    if (this.editing){
+      if (keyPressed.length == 1){
+        this.currentText += keyPressed;
+      } if (keyPressed.toLowerCase() == "backspace" || keyPressed.toLowerCase() == "delete"){
+        this.currentText = this.currentText.slice(0, -1);
+      }
+    }
+  }
+
+  show(){
+    this.showing = true;
+  }
+
+  hide(){
+    this.showing = false;
+  }
+
+  draw(sceneName, show){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing || show){
+        this.frames++;
+        ctx.strokeStyle = "#000";
+        if (this.editing){
+          ctx.fillStyle = "#acecff";
+        } else {
+          if (this.hovering){
+            ctx.fillStyle = "#e3e7ec";
+          } else {
+            ctx.fillStyle = "#FFF";
+          }
+        }
+
+        ctx.beginPath();
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(this.x+this.padding, this.y+this.h-this.padding);
+        ctx.lineTo(this.x+this.w-this.padding, this.y+this.h-this.padding);
+        ctx.stroke();
+        
+        let fontSize = this.maxFontSize;
+        ctx.font = fontSize.toString()+"px sans-serif";
+        let textWidth = ctx.measureText(this.currentText).width;
+
+        if (textWidth > this.w-(this.padding*2)) {
+          let scale = (this.w-(this.padding*2))/textWidth
+          fontSize = parseInt(fontSize*scale);
+          ctx.font = fontSize.toString()+"px sans-serif";
+        }
+        ctx.fillStyle = "#000";
+        ctx.fillText(this.currentText, this.x+this.padding, this.y+(this.h/2)+(fontSize/3));
+
+        if (this.editing && this.lineShow){
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(this.x+this.padding+textWidth, this.y+this.padding);
+          ctx.lineTo(this.x+this.padding+textWidth, this.y+this.h-this.padding);
+          ctx.stroke();
+        }
+
+        if (this.frames % 20 == 0) this.lineShow = !this.lineShow;
+      }
+    }
+  }
+}
+
+class BasicImg {
+  constructor(img, x, y, w, h, showing){
+    this.img = img;
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.showing = showing;
+  }
+
+  show(){
+    this.showing = true;
+  }
+
+  hide(){
+    this.showing = false;
+  }
+
+  draw(show=false){
+    if (this.showing || show){
+      ctx.drawImage(this.img, this.x, this.y, this.w, this.h);
+    }
+  }
+}
+
+console.log("Defining info");
 // Preset stuff
 const osvMessages = {
     "package delivery":"you, big, object, move, question",
@@ -888,15 +1148,15 @@ const mnemMessages = {
 }
 
 const kishMessages = {
-  "package delivery":"ken yu diriber des bekej",
-  "letter delivery":"ken yu diriber des reder",
-  "transportation ticket":"ai ud rik e jrensbordejun diked",
+  "package delivery":"kan you deriber dis bakaj",
+  "letter delivery":"kan you deriber dis reder",
+  "transportation ticket":"i ourd rik a dransbordajion diked",
   "package delivery error":"error",
   "letter delivery error":"error",
   "transportation ticket error":"error",
 }
 
-npcTextCatalog = {}
+let npcTextCatalog = {}
 npcTextCatalog["osv"] = osvMessages;
 npcTextCatalog["mu"] = muMessages;
 npcTextCatalog["plu"] = pluMessages;
@@ -916,6 +1176,36 @@ let shiftPress = false;
 
 let scene = "main"; // main, handbook, delivery, cat
 
+// handbook
+let pageNum = 0;
+let npc_profile_pics = {};
+npc_profile_pics["kish"] = new Image();
+npc_profile_pics["kish"].src = cBASE_IMG_DIR+"kishik/kishik-4.png";
+
+npc_profile_pics["mu"] = new Image();
+npc_profile_pics["mu"].src = cBASE_IMG_DIR+"muglyph/muglyph-11.png";
+
+npc_profile_pics["plu"] = new Image();
+npc_profile_pics["plu"].src = cBASE_IMG_DIR+"pluglyph/pluglyph-1.png";
+
+npc_profile_pics["eng"] = new Image();
+npc_profile_pics["eng"].src = cBASE_IMG_DIR+"guy-1.png";
+
+npc_profile_pics["mnem"] = new Image();
+npc_profile_pics["mnem"].src = cBASE_IMG_DIR+"mnemote/mnemote-1.png";
+
+npc_profile_pics["osv"] = new Image();
+npc_profile_pics["osv"].src = cBASE_IMG_DIR+"guy-1.png";
+
+let npc_profile_txt = {}
+npc_profile_txt["mu"] = "<> <> <> <> <> Muglyph <> Language Type: Glyphs";
+npc_profile_txt["plu"] = "<> <> <> <> <> Pluglyph <> Language Type: Glyphs";
+npc_profile_txt["osv"] = "<> <> <> <> <> Osiv <> Language Type: Glyphs";
+npc_profile_txt["eng"] = "<> <> <> <> <> Nulander <> Language Type: Letters";
+npc_profile_txt["kish"] = "<> <> <> <> <> Kishik <> Language Type: Letters";
+npc_profile_txt["mnem"] = "<> <> <> <> <> Mnemote <> Language Type: Letters";
+
+console.log("Defining sprites");
 // Task generation
 let npcType = "";
 let npcName = "";
@@ -960,7 +1250,7 @@ all_sprites.push(plu1);
 plu_sprites.push(plu1);
 
 let mnem_sprites = [];
-let mnem1 = new Sprite("guy", 1, 1, cCUST_X_START, cCUST_Y_START, cCUST_SIZE, cCUST_SIZE, false, "main");
+let mnem1 = new Sprite("mnemote/mnemote", 3, 10, cCUST_X_START, cCUST_Y_START, cCUST_SIZE, cCUST_SIZE, false, "main");
 all_sprites.push(mnem1);
 mnem_sprites.push(mnem1);
 
@@ -983,9 +1273,18 @@ npc_sprite_opts["osv"] = osv_sprites;
 npc_sprite_opts["eng"] = eng_sprites;
 
 let npcVocab = {}
-npcVocab["plu"] = ["address", "big", "hello", "how", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
-npcVocab["mu"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
-npcVocab["osv"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
+npcVocab["kish"] = ["a", "b", "d", "e", "g", "h", "i", "j", "k", "m", "n", "o", "r", "s", "u", "y"];
+npcVocab["mnem"] = ['*', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v'];
+npcVocab["plu"] = ["address", "big", "hello", "how", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "question", "plural"];
+npcVocab["mu"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you"];
+npcVocab["osv"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "question", "plural"];
+
+let npcTranslations = {}
+npcTranslations["kish"] = {'a': 'a', 'b': 'b/p/v/f', 'd': 'd/t', 'e': 'e', 'g': 'ng', 'h': 'h', 'i': 'i', 'j': 'j/sh/ch', 'k': 'k/g', 'm': 'm', 'n': 'n', 'o': 'o', 'r': 'r/l', 's': 's/z', 'u': 'u', 'y': 'y'}
+npcTranslations["mnem"] = {'*': 'a/e/i/o/u/y', 'j': 'j/sh/ch', 'k': 'k/g', 'l': 'l', 'm': 'm', 'n': 'n', 'p': 'p/b', 'r': 'r', 's': 's/z', 't': 't/d', 'v': 'v/f'};
+npcTranslations["plu"] = {'address': 'address/location', 'big': 'big', 'hello': 'hello/goodbye', 'how': 'how', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', 'plural':'s', 'question':'?'};
+npcTranslations["mu"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you'};
+npcTranslations["osv"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', 'plural':'s', 'question':'?'};
 
 let glyphNPCs = ["mu", "plu", "osv"];
 
@@ -1013,7 +1312,83 @@ all_popups.push(profileInfoBox);
 profileInfoBox.startRunning();
 let profileText = "";
 
+let leftPage = new AnimatedTextBox("#ffffff", "#000", "AAA", cPAGE_X_START, cPAGE_Y_START, cPAGE_WIDTH, cPAGE_HEIGHT, cTEXT_BUBBLE_SIZE, "none", "handbook", false);
+all_popups.push(leftPage);
+// leftPage.startRunning();
+let rightPage = new AnimatedTextBox("#ffffff", "#000", "AAA", cPAGE_X_START+cPAGE_WIDTH, cPAGE_Y_START, cPAGE_WIDTH, cPAGE_HEIGHT, cTEXT_BUBBLE_SIZE, "none", "handbook", false);
+all_popups.push(rightPage);
+// leftPage.startRunning();
 
+let prevPage = new Button("#dee2e7", "#b6dae8", "#677786", "#0b0b2e", " <  ", cPAGE_X_START+15, cPAGE_Y_START+(cPAGE_HEIGHT/2), cPAGE_BTN_SIZE, cPAGE_BTN_SIZE, "prev-page", true, "handbook", true);
+all_buttons.push(prevPage);
+let nextPage = new Button("#dee2e7", "#b6dae8", "#677786", "#0b0b2e", "  > ", cPAGE_X_START-15+(cPAGE_WIDTH*2)-cPAGE_BTN_SIZE, cPAGE_Y_START+(cPAGE_HEIGHT/2), cPAGE_BTN_SIZE, cPAGE_BTN_SIZE, "next-page", true, "handbook", true);
+all_buttons.push(nextPage);
+
+let all_text_input_boxes = [];
+// let textInputBox = new TextInputBox(1000, 100, 200, 50, "main", true);
+// all_text_input_boxes.push(textInputBox);
+
+
+
+let npc_language_pages = {}
+npc_language_pages["mu"] = [];
+npc_language_pages["plu"] = [];
+npc_language_pages["osv"] = [];
+npc_language_pages["kish"] = [];
+npc_language_pages["mnem"] = [];
+let npc_language_inputs = {}
+npc_language_inputs["mu"] = [];
+npc_language_inputs["plu"] = [];
+npc_language_inputs["osv"] = [];
+npc_language_inputs["kish"] = [];
+npc_language_inputs["mnem"] = [];
+let npcPageType;
+let imgObj;
+let textInputBox;
+for (let n = 0; n < cNPC_TYPES.length; n++){
+  npcPageType = cNPC_TYPES[n];
+
+  let startX = rightPage.x+(cBOOK_PADDING*2);
+  let startY = rightPage.y+cBOOK_PADDING;
+  let maxX = (startX+cPAGE_WIDTH)-cBOOK_PADDING;
+  let maxY = (startY+cPAGE_HEIGHT)-cBOOK_PADDING;
+  let currX = startX;
+  let currY = startY;
+  if (npcPageType != "eng"){
+    for (let i = 0; i < npcVocab[npcPageType].length; i++){
+      const img = new Image();
+      img.src = cBASE_IMG_DIR+"languages/"+npcPageType+"-"+npcVocab[npcPageType][i]+".png";
+      if (glyphNPCs.includes(npcPageType)){
+        imgObj = new BasicImg(img, currX, currY, cGLYPH_BOOK_HEIGHT, cGLYPH_BOOK_HEIGHT, false);
+        textInputBox = new TextInputBox(currX+cGLYPH_BOOK_HEIGHT, currY, 200, cGLYPH_BOOK_HEIGHT, "handbook", false);
+
+        currY += cGLYPH_BOOK_HEIGHT;
+        if (currY+cGLYPH_BOOK_HEIGHT >= maxY){
+          // next col
+          currY = startY;
+          currX += cGLYPH_BOOK_HEIGHT+200;
+        }
+      } else {
+        imgObj = new BasicImg(img, currX, currY, cGLYPH_BOOK_HEIGHT*0.75, cGLYPH_BOOK_HEIGHT, false);
+        textInputBox = new TextInputBox(currX+(cGLYPH_BOOK_HEIGHT*0.75), currY, 200, cGLYPH_BOOK_HEIGHT, "handbook", false);
+
+        currY += cGLYPH_BOOK_HEIGHT;
+        if (currY+cGLYPH_BOOK_HEIGHT >= maxY){
+          // next col
+          currY = startY;
+          currX += cGLYPH_BOOK_HEIGHT+100;
+        }
+      }
+
+      npc_language_pages[npcPageType].push(imgObj);
+      all_text_input_boxes.push(textInputBox);
+      npc_language_inputs[npcPageType].push(textInputBox);
+    }
+  }
+}
+
+
+console.log("Defining key + mouse binds");
 // Get Keys
 document.addEventListener("keydown", function (e){
   console.log(e.key);
@@ -1022,6 +1397,10 @@ document.addEventListener("keydown", function (e){
   } else {
     keyPress = e.key;
   }
+
+  all_text_input_boxes.forEach((item) => {
+    item.check_keypress(e.key);
+  });
 });
 
 document.addEventListener("keyup", function (e){
@@ -1042,6 +1421,10 @@ document.addEventListener("mousemove", function(e) {
   all_buttons.forEach((item) => {
     item.is_hovering(mousePos.x, mousePos.y, scene);
   });
+
+  all_text_input_boxes.forEach((item) => {
+    item.check_hovering(mousePos.x, mousePos.y, scene);
+  });
 });
 
 document.addEventListener("mousedown", function(e) { 
@@ -1054,14 +1437,53 @@ document.addEventListener("mousedown", function(e) {
   all_buttons.forEach((item) => {
     if (item.is_clicked(mousePos.x, mousePos.y, scene)){
       // check if nav change
-      if (item.identifier == "nav-handbook") scene = "handbook";
+      if (item.identifier == "nav-handbook"){
+        scene = "handbook";
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+          }
+        }
+      }
       if (item.identifier == "nav-main") scene = "main";
       if (item.identifier == "nav-delivery") scene = "delivery";
       if (item.identifier == "nav-cat") scene = "cat";
+      if (item.identifier == "next-page"){
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+          }
+        }
+        pageNum++;
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+          }
+        }
+      } if (item.identifier == "prev-page"){
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+          }
+        }
+        
+        if (pageNum-1 >= 0){
+          pageNum--;
+        }
+
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+          }
+        }
+      }
     }
   });
   all_skippable.forEach((item) => {
-    item.skip(scene);
+    item.skipIfClicked(mousePos.x, mousePos.y, scene);
+  });
+  all_text_input_boxes.forEach((item) => {
+    item.check_clicked(mousePos.x, mousePos.y, scene);
   });
 });
 
@@ -1079,10 +1501,32 @@ document.addEventListener("touchstart", function(e) {
       if (item.identifier == "nav-main") scene = "main";
       if (item.identifier == "nav-delivery") scene = "delivery";
       if (item.identifier == "nav-cat") scene = "cat";
+      if (item.identifier == "next-page"){
+        for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+          npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+        }
+        pageNum++;
+        for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+          npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+        }
+      } if (item.identifier == "prev-page"){
+        for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+          npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+        }
+        if (pageNum-1 >= 0){
+          pageNum--;
+        }
+        for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+          npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+        }
+      }
     }
   });
   all_skippable.forEach((item) => {
-    item.skip(scene);
+    item.skipIfClicked(mousePos.x, mousePos.y, scene);
+  });
+  all_text_input_boxes.forEach((item) => {
+    item.check_clicked(mousePos.x, mousePos.y, scene);
   });
 });
 
@@ -1101,7 +1545,7 @@ document.addEventListener("touchend", function(e) {
 });
 
 
-
+console.log("Draw function");
 function draw(){
     ctx.fillStyle = "#1c1c32";
     ctx.fillRect(0, 0, cSCREEN_WIDTH, cSCREEN_HEIGHT);
@@ -1165,13 +1609,81 @@ function draw(){
       item.draw(scene);
     })
 
+    if (scene == "handbook"){
+      ctx.fillStyle = "#2b2b2b";
+      ctx.fillRect((cPAGE_X_START+cPAGE_WIDTH)-1, cPAGE_Y_START, 2, cPAGE_HEIGHT);
+
+      if (pageNum < cNPC_TYPES.length){
+        rightPage.resetText("");
+        let npcPageType = cNPC_TYPES[pageNum];
+        // draw profile image
+        ctx.strokeStyle = "#2b2b2b";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(cPAGE_X_START+50, cPAGE_Y_START+50, cPAGE_WIDTH*0.35, cPAGE_WIDTH*0.35);
+        ctx.drawImage(npc_profile_pics[npcPageType], cPAGE_X_START+50, cPAGE_Y_START+50, cPAGE_WIDTH*0.35, cPAGE_WIDTH*0.35);
+
+        if (leftPage.text != npc_profile_txt[npcPageType]){
+          leftPage.resetText(npc_profile_txt[npcPageType]);
+          leftPage.startRunning();
+          leftPage.finishAnim();
+        }
+
+        if (pageNum == 0){
+          prevPage.hide();
+        } else {
+          prevPage.show();
+        }
+
+        if (npcPageType != "eng"){
+          // characters
+          // let startX = rightPage.x+(cBOOK_PADDING*2);
+          // let startY = rightPage.y+cBOOK_PADDING;
+          // let maxX = (startX+cPAGE_WIDTH)-cBOOK_PADDING;
+          // let maxY = (startY+cPAGE_HEIGHT)-cBOOK_PADDING;
+          // let currX = startX;
+          // let currY = startY;
+          
+          // for (let i = 0; i < npcVocab[npcPageType].length; i++){
+          //   const img = new Image();
+          //   img.src = cBASE_IMG_DIR+"languages/"+npcPageType+"-"+npcVocab[npcPageType][i]+".png";
+          //   if (glyphNPCs.includes(npcPageType)){
+          //     ctx.drawImage(img, currX, currY, cGLYPH_BOOK_HEIGHT, cGLYPH_BOOK_HEIGHT);
+          //     currY += cGLYPH_BOOK_HEIGHT;
+          //     if (currY+cGLYPH_BOOK_HEIGHT >= maxY){
+          //       // next col
+          //       currY = startY;
+          //       currX += cGLYPH_BOOK_HEIGHT+200;
+          //     }
+          //   } else {
+          //     ctx.drawImage(img, currX, currY, cGLYPH_BOOK_HEIGHT*0.75, cGLYPH_BOOK_HEIGHT);
+          //     currY += cGLYPH_BOOK_HEIGHT;
+          //     if (currY+cGLYPH_BOOK_HEIGHT >= maxY){
+          //       // next col
+          //       currY = startY;
+          //       currX += cGLYPH_BOOK_HEIGHT+100;
+          //     }
+          //   }
+          for (let i = 0; i < npc_language_pages[npcPageType].length; i++){
+            npc_language_pages[npcPageType][i].draw(true);
+          }
+        }
+      } else {
+        // instructions pages
+      }
+    }
+
     // nav bar
     ctx.fillStyle = "#515151";
     ctx.fillRect(0, cSCREEN_HEIGHT-cNAV_HEIGHT, cSCREEN_WIDTH, cNAV_HEIGHT);
+
+    all_text_input_boxes.forEach((item) => {
+      item.draw(scene);
+    });
 
     all_buttons.forEach((item) => {
       item.draw(scene);
     });
 }
 
+console.log("Running");
 let game = setInterval(draw, 20);
