@@ -27,12 +27,14 @@ const cCUST_Y_START = cSCREEN_HEIGHT-cNAV_HEIGHT-cCUST_SIZE-(cDESK_HEIGHT/2);
 const cNPC_TYPES = ["mnem", "plu", "mu", "osv", "eng", "kish"];
 const cTASK_TYPES = ["package delivery", "letter delivery", "transportation ticket"];
 const cNPC_MOODS = ["default", "grumpy", "chatty"];
-const cTASK_HANDLING_TYPES = ["default", "default", "default", "error"];
+const cTASK_HANDLING_TYPES = ["", "", "", " error"];
 
 const cPROFILE_Y_START = cCUST_Y_START*1.1;
 const cPROFILE_WIDTH = (cSCREEN_WIDTH-cCUST_SIZE)-((cSCREEN_WIDTH-cCUST_SIZE)/4);
 const cPROFILE_HEIGHT = cSCREEN_HEIGHT-cPROFILE_Y_START-cNAV_HEIGHT-(cDESK_HEIGHT/2);
 const cPROFILE_PADDING = 25;
+
+const cGLYPH_HEIGHT = 100;
 
 // Resize stuff on window resize
 function resizeCanvas() {
@@ -161,7 +163,7 @@ class Sprite {
 }
 
 class TextSpeechBubble {
-  constructor(backgroundColor, textColor, text, x, y, h, maxWidth, framesPerChar=3){
+  constructor(backgroundColor, textColor, text, x, y, h, maxWidth, framesPerChar=3, activeScene="", showing=true){
     this.backgroundColor = backgroundColor;
     this.textColor = textColor;
     this.text = text;
@@ -180,6 +182,9 @@ class TextSpeechBubble {
     this.currIdx = 0;
     this.padding = this.h*0.2;
     this.fontSize = parseInt(this.h-this.padding);
+
+    this.activeScene = activeScene;
+    this.showing = showing;
   }
 
   startRunning(){
@@ -190,8 +195,37 @@ class TextSpeechBubble {
     return (!this.running) && this.currentText[0] != "";
   }
 
+  show(){
+    this.showing = true;
+  }
+
+  hide(){
+    this.showing = false;
+  }
+
+  resetText(newText, showing=true){
+    this.text = newText;
+    this.textWords = newText.split(" ");
+    this.running = false;
+    this.currentText = [""];
+    this.frames = 0;
+    this.lineIdx = 0;
+    this.wordIdx = 0;
+    this.currIdx = 0;
+    this.showing = showing;
+  }
+
   checkNewLine(){
+    if (this.text[this.currIdx] == "<" && this.text[this.currIdx+1] == ">"){
+      // new line
+      this.currIdx += 2;
+      this.currentText.push("");
+      this.lineIdx++;
+      return;
+    }
+
     ctx.font = this.fontSize.toString()+"px sans-serif";
+
     let textWidth = ctx.measureText(this.currentText[this.lineIdx]+this.textWords[this.wordIdx]).width;
 
     if (textWidth > this.maxWidth){
@@ -201,58 +235,244 @@ class TextSpeechBubble {
     }
   }
 
-  skip(){
-    for (let i = this.currIdx; i < this.text.length; i++){
-      this.checkNewLine();
-      this.currentText[this.lineIdx] += this.text[i];
+  skip(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        while (this.currIdx < this.text.length){
+          this.checkNewLine();
+          this.currentText[this.lineIdx] += this.text[this.currIdx];
+          this.currIdx++;
+        }
+        this.running = false;
+      }
     }
-    this.running = false;
   }
 
-  draw(){
-    if (this.running || this.currentText[0] != ""){
-      if (this.running) {
-        if (this.frames % this.framesPerChar == 0){
-          if (this.currIdx < this.text.length){
-            if (this.text[this.currIdx] == " "){
-              this.wordIdx++;
+  draw(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.running || this.currentText[0] != ""){
+          if (this.running) {
+            if (this.frames % this.framesPerChar == 0){
+              this.checkNewLine();
+              if (this.currIdx < this.text.length){
+                if (this.text[this.currIdx] == " "){
+                  this.wordIdx++;
+                }
+                this.currentText[this.lineIdx] += this.text[this.currIdx];
+                this.currIdx++;
+              } else {
+                this.running = false;
+              }
             }
-            this.currentText[this.lineIdx] += this.text[this.currIdx];
-            this.currIdx++;
-          } else {
-            this.running = false;
           }
+
+          ctx.font = this.fontSize.toString()+"px sans-serif";
+          let textWidth = ctx.measureText(this.currentText[this.lineIdx]).width;
+          let speechBubbleWidth = textWidth+(this.padding*2);
+
+          ctx.strokeStyle = this.backgroundColor;
+          ctx.fillStyle = this.backgroundColor;
+          ctx.beginPath();
+          if (this.lineIdx == 0) {
+            ctx.roundRect(this.x, this.y, speechBubbleWidth, this.h*(this.lineIdx+1), [this.h/2]);
+          } else {
+            ctx.roundRect(this.x, this.y, this.maxWidth, this.h*(this.lineIdx+1), [this.h/2]);
+          }
+          ctx.stroke();
+          ctx.fill();
+          
+          ctx.fillStyle = this.textColor;
+          for (let i=0; i <= this.lineIdx; i++){
+            ctx.fillText(this.currentText[i], this.x+((speechBubbleWidth-textWidth)/2), this.y+(this.fontSize*(i+1)));
+          }
+
+          this.frames++;
         }
       }
+    }
+  }
+}
 
-      ctx.font = this.fontSize.toString()+"px sans-serif";
-      let textWidth = ctx.measureText(this.currentText[this.lineIdx]).width;
-      let speechBubbleWidth = textWidth+(this.padding*2);
-      this.checkNewLine();
+class GlyphTextSpeechBubble {
+  constructor(backgroundColor, text, languageType, x, y, maxWidth, framesPerChar=3, activeScene="", showing=true){
+    this.backgroundColor = backgroundColor;
+    this.textWords = text.split(", ");
+    this.languageType = languageType;
+    this.x = x;
+    this.y = y;
+    this.padding = cGLYPH_HEIGHT*0.2;
+    this.maxNumGlyphs = (maxWidth-(this.padding*2))/cGLYPH_HEIGHT;
 
-      ctx.strokeStyle = this.backgroundColor;
-      ctx.fillStyle = this.backgroundColor;
-      ctx.beginPath();
-      if (this.lineIdx == 0) {
-        ctx.roundRect(this.x, this.y, speechBubbleWidth, this.h*(this.lineIdx+1), [this.h/2]);
-      } else {
-        ctx.roundRect(this.x, this.y, this.maxWidth, this.h*(this.lineIdx+1), [this.h/2]);
+    this.running = false;
+    this.framesPerChar = framesPerChar;
+    this.frames = 0;
+    this.currIdx = 0;
+
+    this.activeScene = activeScene;
+    this.showing = showing;
+  }
+
+  resetText(newText, languageType, showing){
+    this.textWords = newText.split(", ");
+    this.languageType = languageType;
+    this.running = false;
+    this.frames = 0;
+    this.currIdx = 0;
+    this.showing = showing;
+  }
+
+  startRunning(){
+    this.running = true;
+  }
+
+  isDone(){
+    return (!this.running) && this.currIdx > 0;
+  }
+
+  skip(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        this.currIdx = this.textWords.length;
       }
-      ctx.stroke();
-      ctx.fill();
-      
-      ctx.fillStyle = this.textColor;
-      for (let i=0; i <= this.lineIdx; i++){
-        ctx.fillText(this.currentText[i], this.x+((speechBubbleWidth-textWidth)/2), this.y+(this.fontSize*(i+1)));
-      }
+    }
+  }
 
-      this.frames++;
+  draw(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.running || this.currIdx > 0){
+          if (this.running) {
+            if (this.frames % this.framesPerChar == 0){
+              if (this.currIdx < this.textWords.length){
+                this.currIdx++;
+              } else {
+                this.running = false;
+              }
+            }
+          }
+          
+          let speechBubbleWidth;
+          if (this.currIdx < this.maxNumGlyphs){
+            speechBubbleWidth = this.currIdx*cGLYPH_HEIGHT;
+          } else {
+            speechBubbleWidth = this.maxNumGlyphs*cGLYPH_HEIGHT;
+          }
+          let speechBubbleHeight = (parseInt(this.currIdx/this.maxNumGlyphs)+1)*cGLYPH_HEIGHT;
+
+          ctx.strokeStyle = this.backgroundColor;
+          ctx.fillStyle = this.backgroundColor;
+          ctx.beginPath();
+          ctx.roundRect(this.x, this.y, speechBubbleWidth+(this.padding*2), speechBubbleHeight+(this.padding*2), [cGLYPH_HEIGHT/2]);
+          ctx.stroke();
+          ctx.fill();
+          
+          for (let i = 0; i < this.currIdx; i++){
+            if (this.textWords[i] != "" && this.textWords[i] != " "){
+              const img = new Image();
+              img.src = cBASE_IMG_DIR+"languages/"+this.languageType+"-"+this.textWords[i]+".png";
+              ctx.drawImage(img, this.x+(this.padding/2)+((i%this.maxNumGlyphs)*cGLYPH_HEIGHT), this.y+(this.padding/2)+(cGLYPH_HEIGHT*0.05)+(parseInt(i/this.maxNumGlyphs)*cGLYPH_HEIGHT), cGLYPH_HEIGHT, cGLYPH_HEIGHT);
+            }
+          }
+
+          this.frames++;
+        }
+      }
+    }
+  }
+}
+
+class CharTextSpeechBubble {
+  constructor(backgroundColor, text, languageType, x, y, maxWidth, framesPerChar=3, activeScene="", showing=true){
+    this.backgroundColor = backgroundColor;
+    this.textWords = text.split("");
+    this.languageType = languageType;
+    this.x = x;
+    this.y = y;
+    this.padding = cGLYPH_HEIGHT*0.2;
+    this.maxNumChars = parseInt((maxWidth-(this.padding*2))/(cGLYPH_HEIGHT*0.75));
+    console.log(this.maxNumChars*(cGLYPH_HEIGHT*0.75));
+
+    this.running = false;
+    this.framesPerChar = framesPerChar;
+    this.frames = 0;
+    this.currIdx = 0;
+
+    this.activeScene = activeScene;
+    this.showing = showing;
+  }
+
+  resetText(newText, languageType, showing){
+    this.textWords = newText.split("");
+    this.languageType = languageType;
+    this.running = false;
+    this.frames = 0;
+    this.currIdx = 0;
+    this.showing = showing;
+  }
+
+  startRunning(){
+    this.running = true;
+  }
+
+  isDone(){
+    return (!this.running) && this.currIdx > 0;
+  }
+
+  skip(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        this.currIdx = this.textWords.length;
+      }
+    }
+  }
+
+  draw(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.running || this.currIdx > 0){
+          if (this.running) {
+            if (this.frames % this.framesPerChar == 0){
+              if (this.currIdx < this.textWords.length){
+                this.currIdx++;
+              } else {
+                this.running = false;
+              }
+            }
+          }
+          
+          let speechBubbleWidth;
+          if (this.currIdx < this.maxNumChars){
+            speechBubbleWidth = this.currIdx*(cGLYPH_HEIGHT*0.75);
+          } else {
+            speechBubbleWidth = this.maxNumChars*(cGLYPH_HEIGHT*0.75);
+          }
+          let speechBubbleHeight = (parseInt(this.currIdx/this.maxNumChars)+1)*cGLYPH_HEIGHT;
+
+          ctx.strokeStyle = this.backgroundColor;
+          ctx.fillStyle = this.backgroundColor;
+          ctx.beginPath();
+          ctx.roundRect(this.x, this.y, speechBubbleWidth+(this.padding*2), speechBubbleHeight+(this.padding*2), [cGLYPH_HEIGHT/2]);
+          ctx.stroke();
+          ctx.fill();
+          
+          for (let i = 0; i < this.currIdx; i++){
+            if (this.textWords[i] != "" && this.textWords[i] != " "){
+              const img = new Image();
+              img.src = cBASE_IMG_DIR+"languages/"+this.languageType+"-"+this.textWords[i]+".png";
+              ctx.drawImage(img, this.x+(this.padding/2)+((i % this.maxNumChars)*cGLYPH_HEIGHT*0.75), this.y+(this.padding/2)+(cGLYPH_HEIGHT*0.05)+(parseInt(i/this.maxNumChars)*cGLYPH_HEIGHT), cGLYPH_HEIGHT*0.75, cGLYPH_HEIGHT);
+            }
+          }
+
+          this.frames++;
+        }
+      }
     }
   }
 }
 
 class MultiTextSpeechBubble {
-  constructor(backgroundColor, textColor, texts, startX, startY, h, maxWidth, activeScene="", framesPerChar=3){
+  constructor(backgroundColor, textColor, texts, startX, startY, h, maxWidth, activeScene="", showing=true, framesPerChar=3){
     this.textBubbles = [];
     
     this.currX = startX;
@@ -268,6 +488,28 @@ class MultiTextSpeechBubble {
     this.padding = h/4;
 
     this.activeScene = activeScene;
+    this.showing = showing;
+    this.started = false;
+    this.finished = false;
+
+    this.h = h
+    this.maxWidth = maxWidth;
+    this.framesPerChar = framesPerChar;
+    this.backgroundColor = backgroundColor;
+    this.textColor = textColor;
+  }
+
+  resetText(newTexts, showing=true){
+    this.textBubbles = [];
+    this.currTextBubble = 0;
+
+    let textBubble;
+    for (let i = 0; i < newTexts.length; i++){
+      textBubble = new TextSpeechBubble(this.backgroundColor, this.textColor, newTexts[i], this.currX, this.currY, this.h, this.maxWidth, this.framesPerChar);
+      this.textBubbles.push(textBubble);
+    }
+
+    this.showing = showing;
     this.started = false;
     this.finished = false;
   }
@@ -278,37 +520,19 @@ class MultiTextSpeechBubble {
     this.textBubbles[this.currTextBubble].startRunning();
   }
 
-  skip(sceneName){
-    if (this.activeScene == "" || this.activeScene == sceneName){
-      if (this.started && !this.finished){
-        this.textBubbles[this.currTextBubble].skip();
-        if (this.textBubbles[this.currTextBubble].isDone()){
-          // update next text bubble position
-          let txtBbl = this.textBubbles[this.currTextBubble];
-          this.currY = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
-          
-          // start next one
-          this.currTextBubble++;
-          if (this.currTextBubble >= this.textBubbles.length){
-            // done!
-            this.finished = true;
-          } else {
-            this.textBubbles[this.currTextBubble].y = this.currY
-            this.textBubbles[this.currTextBubble].startRunning();
-          }
-        }
-      }
-    }
+  show() {
+    this.showing = true;
   }
 
-  draw(sceneName){
-    if (this.activeScene == "" || this.activeScene == sceneName){
-      if (this.started){
-        for (let i = 0; i < this.textBubbles.length; i++){
-          this.textBubbles[i].draw();
-        }
+  hide() {
+    this.showing = false;
+  }
 
-        if (!this.finished){
+  skip(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.started && !this.finished){
+          this.textBubbles[this.currTextBubble].skip();
           if (this.textBubbles[this.currTextBubble].isDone()){
             // update next text bubble position
             let txtBbl = this.textBubbles[this.currTextBubble];
@@ -328,10 +552,40 @@ class MultiTextSpeechBubble {
       }
     }
   }
+
+  draw(sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.started){
+          for (let i = 0; i < this.textBubbles.length; i++){
+            this.textBubbles[i].draw();
+          }
+
+          if (!this.finished){
+            if (this.textBubbles[this.currTextBubble].isDone()){
+              // update next text bubble position
+              let txtBbl = this.textBubbles[this.currTextBubble];
+              this.currY = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
+              
+              // start next one
+              this.currTextBubble++;
+              if (this.currTextBubble >= this.textBubbles.length){
+                // done!
+                this.finished = true;
+              } else {
+                this.textBubbles[this.currTextBubble].y = this.currY
+                this.textBubbles[this.currTextBubble].startRunning();
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 class Button {
-  constructor(defaultColor, hoverColor, clickedColor, textColor, text, x, y, w, h, identifier, oneClick=true){
+  constructor(defaultColor, hoverColor, clickedColor, textColor, text, x, y, w, h, identifier, oneClick=true, activeScene="", showing=true){
     this.defaultColor = defaultColor;
     this.hoverColor = hoverColor;
     this.clickedColor = clickedColor;
@@ -347,17 +601,24 @@ class Button {
 
     this.padding = this.w*0.02;
     this.identifier = identifier;
+
+    this.activeScene = activeScene;
+    this.showing = showing;
   }
 
-  is_clicked(mouseX, mouseY){
-    if (this.x < mouseX && this.x+this.w > mouseX){
-      if (this.y < mouseY && this.y+this.h > mouseY){
-        this.clickedOn = true;
-        return true;
+  is_clicked(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.x < mouseX && this.x+this.w > mouseX){
+          if (this.y < mouseY && this.y+this.h > mouseY){
+            this.clickedOn = true;
+            return true;
+          }
+        }
+        this.clickedOn = false;
+        return false;
       }
     }
-    this.clickedOn = false;
-    return false;
   }
 
   mouse_up(){
@@ -366,15 +627,19 @@ class Button {
     }
   }
 
-  is_hovering(mouseX, mouseY){
-    if (this.x < mouseX && this.x+this.w > mouseX){
-      if (this.y < mouseY && this.y+this.h > mouseY){
-        this.hovering = true;
-        return true;
+  is_hovering(mouseX, mouseY, sceneName){
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.x < mouseX && this.x+this.w > mouseX){
+          if (this.y < mouseY && this.y+this.h > mouseY){
+            this.hovering = true;
+            return true;
+          }
+        }
+        this.hovering = false;
+        return false;
       }
     }
-    this.hovering = false;
-    return false;
   }
 
   is_down(){
@@ -387,36 +652,40 @@ class Button {
   }
 
   draw(){
-    if (this.clickedOn){
-      ctx.strokeStyle = this.clickedColor;
-      ctx.fillStyle = this.clickedColor;
-    } else if (this.hovering){
-      ctx.strokeStyle = this.hoverColor;
-      ctx.fillStyle = this.hoverColor;
-    } else {
-      ctx.strokeStyle = this.defaultColor;
-      ctx.fillStyle = this.defaultColor;
-    }
-    ctx.beginPath();
-    ctx.roundRect(this.x, this.y, this.w, this.h, [this.h/2]);
-    ctx.stroke();
-    ctx.fill();
+    if (this.activeScene == "" || this.activeScene == sceneName){
+      if (this.showing){
+        if (this.clickedOn){
+          ctx.strokeStyle = this.clickedColor;
+          ctx.fillStyle = this.clickedColor;
+        } else if (this.hovering){
+          ctx.strokeStyle = this.hoverColor;
+          ctx.fillStyle = this.hoverColor;
+        } else {
+          ctx.strokeStyle = this.defaultColor;
+          ctx.fillStyle = this.defaultColor;
+        }
+        ctx.beginPath();
+        ctx.roundRect(this.x, this.y, this.w, this.h, [this.h/2]);
+        ctx.stroke();
+        ctx.fill();
 
-    let maxHeight = this.h-(this.padding*2);
-    let maxWidth = this.w-(this.padding*2);
+        let maxHeight = this.h-(this.padding*2);
+        let maxWidth = this.w-(this.padding*2);
 
-    ctx.font = maxHeight.toString()+"px sans-serif";
-    let textWidth = ctx.measureText(this.text).width;
-    let scalar = maxWidth/textWidth;
-    let fontSize = scalar*maxHeight;
-    if (fontSize > maxHeight){
-      fontSize = maxHeight;
+        ctx.font = maxHeight.toString()+"px sans-serif";
+        let textWidth = ctx.measureText(this.text).width;
+        let scalar = maxWidth/textWidth;
+        let fontSize = scalar*maxHeight;
+        if (fontSize > maxHeight){
+          fontSize = maxHeight;
+        }
+        
+        ctx.font = fontSize.toString()+"px sans-serif";
+        textWidth = ctx.measureText(this.text).width;
+        ctx.fillStyle = this.textColor;
+        ctx.fillText(this.text, this.x+((this.w-textWidth)/2), this.y+fontSize, this.w);
+      }
     }
-    
-    ctx.font = fontSize.toString()+"px sans-serif";
-    textWidth = ctx.measureText(this.text).width;
-    ctx.fillStyle = this.textColor;
-    ctx.fillText(this.text, this.x+((this.w-textWidth)/2), this.y+fontSize, this.w);
   }
 }
 
@@ -467,6 +736,14 @@ class AnimatedTextBox {
   }
 
   checkNewLine(){
+    if (this.text[this.currIdx] == "<" && this.text[this.currIdx+1] == ">"){
+      // new line
+      this.currIdx += 2;
+      this.currentText.push("");
+      this.lineIdx++;
+      return;
+    }
+
     ctx.font = this.fontSize.toString()+"px sans-serif";
     let textWidth = ctx.measureText(this.currentText[this.lineIdx]+this.textWords[this.wordIdx]).width;
 
@@ -480,9 +757,10 @@ class AnimatedTextBox {
   skip(sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.txtRunning){
-        for (let i = this.currIdx; i < this.text.length; i++){
+        while (this.currIdx < this.text.length){
           this.checkNewLine();
-          this.currentText[this.lineIdx] += this.text[i];
+          this.currentText[this.lineIdx] += this.text[this.currIdx];
+          this.currIdx++;
         }
         this.txtRunning = false;
       }
@@ -504,6 +782,7 @@ class AnimatedTextBox {
     if (this.txtRunning || this.currentText[0] != ""){
       if (this.txtRunning) {
         if (this.frames % this.framesPerChar == 0){
+          this.checkNewLine();
           if (this.currIdx < this.text.length){
             if (this.text[this.currIdx] == " "){
               this.wordIdx++;
@@ -517,7 +796,6 @@ class AnimatedTextBox {
       }
 
       ctx.font = this.fontSize.toString()+"px sans-serif";
-      this.checkNewLine();
 
       ctx.fillStyle = this.textColor;
       for (let i=0; i <= this.lineIdx; i++){
@@ -564,6 +842,67 @@ class AnimatedTextBox {
 }
 
 // Preset stuff
+const osvMessages = {
+    "package delivery":"you, big, object, move, question",
+    "letter delivery":"you, paper, move, question",
+    "transportation ticket":"me, move, paper, want",
+    "package delivery error":"small",
+    "letter delivery error":"small",
+    "transportation ticket error":"small"
+}
+
+const muMessages = {
+  "package delivery":"please, move, object",
+  "letter delivery":"please, move, paper, object",
+  "transportation ticket":"me, want, move, paper",
+  "package delivery error":"small",
+  "letter delivery error":"small",
+  "transportation ticket error":"small",
+}
+
+const pluMessages = {
+  "package delivery":"you, move, object",
+  "letter delivery":"you, move, paper",
+  "transportation ticket":"me, want, move, paper",
+  "package delivery error":"small",
+  "letter delivery error":"small",
+  "transportation ticket error":"small",
+}
+
+const engMessages = {
+  "package delivery":"Can you please deliver this package?",
+  "letter delivery":"Can you please deliver this letter?",
+  "transportation ticket":"I would like a transportation ticket, please",
+  "package delivery error":"AAA",
+  "letter delivery error":"AAA",
+  "transportation ticket error":"AAA",
+}
+
+const mnemMessages = {
+  "package delivery":"k*n j* t*l*v*r v*s p*k*j",
+  "letter delivery":"k*n j* t*l*v*r v*s l*t*r",
+  "transportation ticket":"m* *nt * jr*nsp*rt*j*n t*k*t",
+  "package delivery error":"*r*r",
+  "letter delivery error":"*r*r",
+  "transportation ticket error":"*r*r",
+}
+
+const kishMessages = {
+  "package delivery":"ken yu diriber des bekej",
+  "letter delivery":"ken yu diriber des reder",
+  "transportation ticket":"ai ud rik e jrensbordejun diked",
+  "package delivery error":"error",
+  "letter delivery error":"error",
+  "transportation ticket error":"error",
+}
+
+npcTextCatalog = {}
+npcTextCatalog["osv"] = osvMessages;
+npcTextCatalog["mu"] = muMessages;
+npcTextCatalog["plu"] = pluMessages;
+npcTextCatalog["eng"] = engMessages;
+npcTextCatalog["mnem"] = mnemMessages;
+npcTextCatalog["kish"] = kishMessages;
 
 
 /* Game functionality */
@@ -644,28 +983,35 @@ npc_sprite_opts["osv"] = osv_sprites;
 npc_sprite_opts["eng"] = eng_sprites;
 
 let npcVocab = {}
-npcVocab["kish"] = [""];
-npcVocab["mu"] = [""];
 npcVocab["plu"] = ["address", "big", "hello", "how", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
-npcVocab["mnem"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
+npcVocab["mu"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
 npcVocab["osv"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "thanks", "want", "what", "when", "where", "who", "why", "you"];
-npcVocab["eng"] = [""];
 
 let glyphNPCs = ["mu", "plu", "osv"];
 
 // text bubbles
 let all_skippable = [];
 let all_popups = [];
-// textBubble = new TextSpeechBubble("#FFF", "#000", "Ello whats up how are you doing? Can I help ya out? Is this text too long? Idk :3 OwO :O", 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, 2);
-let textBubble = new MultiTextSpeechBubble("#FFF", "#000", ["Ello whats up how are you doing? Can I help ya out? Is this text too long? Idk"], 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, "main", 2);
-all_skippable.push(textBubble);
-all_popups.push(textBubble);
-textBubble.startRunning();
+// let engTextBubble = new MultiTextSpeechBubble("#FFF", "#000", ["Ello whats up how are you doing?"], 50, 50, cSCREEN_WIDTH-100, cSCREEN_WIDTH-100, "main", false, 2);
+let engTextBubble = new TextSpeechBubble("#FFF", "#000", "Ello whats up how are you doing?", 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, 3, "main", false);
+all_skippable.push(engTextBubble);
+all_popups.push(engTextBubble);
 
-let profileInfoBox = new AnimatedTextBox("#78f6ff", "#000", "AAAA", cSCREEN_WIDTH-cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_Y_START+cPROFILE_PADDING, cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_HEIGHT+cPROFILE_PADDING, 50, "from-bottom", "main", true, 5)
+let glyphTextBubble = new GlyphTextSpeechBubble("#FFF", pluMessages["package delivery"], "plu", 50, 50, cSCREEN_WIDTH-100, 3, "main", false);
+all_skippable.push(glyphTextBubble);
+all_popups.push(glyphTextBubble);
+// glyphTextBubble.startRunning();
+
+let charTextBubble = new CharTextSpeechBubble("#FFF", kishMessages["package delivery"], "kish", 50, 50, cSCREEN_WIDTH-100, 3, "main", false);
+all_skippable.push(charTextBubble);
+all_popups.push(charTextBubble);
+// charTextBubble.startRunning();
+
+let profileInfoBox = new AnimatedTextBox("#78f6ff", "#000", "AAAA", cSCREEN_WIDTH-cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_Y_START+cPROFILE_PADDING, cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_HEIGHT+cPROFILE_PADDING, 50, "from-bottom", "main", true, 2)
 all_skippable.push(profileInfoBox);
 all_popups.push(profileInfoBox);
 profileInfoBox.startRunning();
+let profileText = "";
 
 
 // Get Keys
@@ -694,7 +1040,7 @@ document.addEventListener("mousemove", function(e) {
   mousePos.y = (e.y-cvs.getBoundingClientRect().top) * yScale;
 
   all_buttons.forEach((item) => {
-    item.is_hovering(mousePos.x, mousePos.y);
+    item.is_hovering(mousePos.x, mousePos.y, scene);
   });
 });
 
@@ -706,7 +1052,7 @@ document.addEventListener("mousedown", function(e) {
 
   mouseDown = true;
   all_buttons.forEach((item) => {
-    if (item.is_clicked(mousePos.x, mousePos.y)){
+    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
       // check if nav change
       if (item.identifier == "nav-handbook") scene = "handbook";
       if (item.identifier == "nav-main") scene = "main";
@@ -727,7 +1073,7 @@ document.addEventListener("touchstart", function(e) {
   
   mouseDown = true;
   all_buttons.forEach((item) => {
-    if (item.is_clicked(mousePos.x, mousePos.y)){
+    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
       // check if nav change
       if (item.identifier == "nav-handbook") scene = "handbook";
       if (item.identifier == "nav-main") scene = "main";
@@ -759,25 +1105,6 @@ document.addEventListener("touchend", function(e) {
 function draw(){
     ctx.fillStyle = "#1c1c32";
     ctx.fillRect(0, 0, cSCREEN_WIDTH, cSCREEN_HEIGHT);
-    // ctx.fillStyle = "#dedee7";
-    // ctx.fillRect(0, 0, cSCREEN_WIDTH, cTEXT_BOX_HEIGHT);
-    
-    // let i = 0;
-    // if (npcType === ""){
-    //     // new npc
-    //     npcType = getRandomNPCType();
-    //     taskType = getRandomTaskType();
-    // }
-    // for (const word of message.split(", ")) {
-    //     if (word === "[]") {
-            
-    //     } else {
-    //         const img = new Image();
-    //         img.src = "./images/languages/"+languagePrefix+"-"+word+".png";
-    //         ctx.drawImage(img, cTEXT_START_X+((i%cCHARS_IN_LINE)*cCHAR_SIZE), cTEXT_START_Y+(int(i/cCHARS_IN_LINE)*cCHAR_SIZE), cCHAR_SIZE, cCHAR_SIZE);
-    //     }
-    //     i++;
-    // }
     
     all_sprites.forEach((item) => {
       item.draw(scene);
@@ -802,7 +1129,6 @@ function draw(){
           npcName = getRandomNPCName();
         }
 
-        npcName = getRandomNPCName()
         npcMood = getRandomChoice(cNPC_MOODS);
         
         taskType = getRandomChoice(cTASK_TYPES);
@@ -811,6 +1137,27 @@ function draw(){
         npcVariation = randrange(0, npc_sprite_opts[npcType].length);
 
         npc_sprite_opts[npcType][npcVariation].show();
+
+        // chat text
+        if (npcType == "eng"){
+          engTextBubble.resetText(npcTextCatalog[npcType][taskType+taskHandlingType], true);
+          engTextBubble.startRunning();
+        } else if (glyphNPCs.includes(npcType)){
+          glyphTextBubble.resetText(npcTextCatalog[npcType][taskType+taskHandlingType], npcType, true);
+          glyphTextBubble.startRunning();
+        } else {
+          charTextBubble.resetText(npcTextCatalog[npcType][taskType+taskHandlingType], npcType, true);
+          charTextBubble.startRunning();
+        }
+
+        // profile
+        profileText = "Name: <>\"";
+        profileText += npcName;
+        profileText += "\"<> <>Request Category: <>\"";
+        profileText += taskType;
+        profileText += "\"";
+
+        profileInfoBox.text = profileText;
       }
     }
 
@@ -823,7 +1170,7 @@ function draw(){
     ctx.fillRect(0, cSCREEN_HEIGHT-cNAV_HEIGHT, cSCREEN_WIDTH, cNAV_HEIGHT);
 
     all_buttons.forEach((item) => {
-      item.draw();
+      item.draw(scene);
     });
 }
 
