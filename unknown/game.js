@@ -25,6 +25,7 @@ const cCUST_X_START = 50;
 const cCUST_Y_START = cSCREEN_HEIGHT-cNAV_HEIGHT-cCUST_SIZE-(cDESK_HEIGHT/2);
 
 const cNPC_TYPES = ["mu", "plu", "osv", "eng", "kish", "mnem"];
+const cPLACE_NAMES = ["nuland", "kiskus", "mnemonite", "mugly", "pluglo", "ignus"];
 const cTASK_TYPES = ["package delivery", "letter delivery", "transportation ticket"];
 const cNPC_MOODS = ["default", "grumpy", "chatty"];
 const cTASK_HANDLING_TYPES = [""];
@@ -86,15 +87,15 @@ function getRandomChoice(arr){
   return arr[randrange(0, arr.length)];
 }
 
-function getRandomDestination(languageType){
-  if (languageType == "kish"){
-    return getRandomChoice(["nurand", "kiskus", "mnemonide", "mukry", "brukro", "iknus"]);
-  } else if (languageType == "mnem"){
-    return getRandomChoice(["n*l*nt", "k*sk*s", "mn*m*n*t", "m*kl*", "pl*kl*", "*kn*s"])
-  } else {
-    return getRandomChoice(["nuland", "kiskus", "mnemonite", "mugly", "pluglo", "ignus"]);
-  }
-}
+// function getRandomDestination(languageType){
+//   if (languageType == "kish"){
+//     return getRandomChoice(["nurand", "kiskus", "mnemonide", "mukry", "brukro", "iknus"]);
+//   } else if (languageType == "mnem"){
+//     return getRandomChoice(["n*l*nt", "k*sk*s", "mn*m*n*t", "m*kl*", "pl*kl*", "*kn*s"])
+//   } else {
+//     return getRandomChoice(["nuland", "kiskus", "mnemonite", "mugly", "pluglo", "ignus"]);
+//   }
+// }
 
 function getRandomNPCName() {
   let vowel = (randrange(0, 2) == 0);
@@ -279,7 +280,7 @@ class ClickableSprite {
 }
 
 class TextSpeechBubble {
-  constructor(backgroundColor, textColor, text, x, y, h, maxWidth, framesPerChar=3, activeScene="", showing=true){
+  constructor(backgroundColor, textColor, text, x, y, h, maxWidth, framesPerChar=3, activeScene="", showing=true, italicized=false){
     this.backgroundColor = backgroundColor;
     this.textColor = textColor;
     this.text = text;
@@ -302,6 +303,7 @@ class TextSpeechBubble {
 
     this.activeScene = activeScene;
     this.showing = showing;
+    this.italicized = italicized;
   }
 
   startRunning(){
@@ -342,7 +344,11 @@ class TextSpeechBubble {
       return;
     }
 
-    ctx.font = this.fontSize.toString()+"px sans-serif";
+    if (this.italicized) {
+      ctx.font = "italic "+this.fontSize.toString()+"px sans-serif";
+    } else {
+      ctx.font = this.fontSize.toString()+"px sans-serif";
+    }
 
     let textWidth = ctx.measureText(this.currentText[this.lineIdx]+this.textWords[this.wordIdx]).width;
 
@@ -413,7 +419,12 @@ class TextSpeechBubble {
             }
           }
 
-          ctx.font = this.fontSize.toString()+"px sans-serif";
+          
+          if (this.italicized) {
+            ctx.font = "italic "+this.fontSize.toString()+"px sans-serif";
+          } else {
+            ctx.font = this.fontSize.toString()+"px sans-serif";
+          }
           let textWidth = ctx.measureText(this.currentText[this.lineIdx]).width;
           let speechBubbleWidth = textWidth+(this.padding*2);
 
@@ -483,6 +494,10 @@ class GlyphTextSpeechBubble {
 
   isDone(){
     return (!this.running) && this.currIdx > 0;
+  }
+
+  getEndY(){
+    return this.y+(this.padding/2)+(cGLYPH_HEIGHT*0.05)+(parseInt((this.currIdx-1)/this.maxNumGlyphs)*cGLYPH_HEIGHT)+cGLYPH_HEIGHT;
   }
 
   skip(sceneName){
@@ -622,6 +637,10 @@ class CharTextSpeechBubble {
 
   isDone(){
     return (!this.running) && this.currIdx > 0;
+  }
+
+  getEndY(){
+    return this.y+(this.padding/2)+(cGLYPH_HEIGHT*0.05)+(parseInt((this.currIdx-1)/this.maxNumChars)*cGLYPH_HEIGHT)+cGLYPH_HEIGHT;
   }
 
   skip(sceneName){
@@ -1510,6 +1529,10 @@ npcTextCatalog["mnem"] = mnemMessages;
 npcTextCatalog["kish"] = kishMessages;
 
 
+let kishPlaceNames = {"nuland":"nurand", "kiskus":"kiskus", "mnemonite":"mnemonide", "mugly":"mukry", "pluglo":"brukro", "ignus":"iknus"};
+let mnemPlaceNames = {"nuland":"n*l*nt", "kiskus":"k*sk*s", "mnemonite":"mn*m*n*t", "mugly":"m*kl*", "pluglo":"pl*kl*", "ignus":"*kn*s"};
+
+
 /* Game functionality */
 let mousePos = {
     x:-1,
@@ -1564,8 +1587,9 @@ let currentDeliverySelection = "";
 let finalDeliverySelection = "";
 let numCustomersServed = 0;
 let numCustomerSuccesses = 0;
-let canGetTranslation = false;
+let numAvailableTranslations = 0;
 let deliveryDone = false;
+let activeCharInfo = null;
 
 // buttons
 let all_buttons = [];
@@ -1629,16 +1653,16 @@ npc_sprite_opts["eng"] = eng_sprites;
 let npcVocab = {}
 npcVocab["kish"] = ["a", "b", "d", "e", "g", "h", "i", "j", "k", "m", "n", "o", "r", "s", "u", "y"];
 npcVocab["mnem"] = ['*', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v'];
-npcVocab["plu"] = ["address", "big", "hello", "how", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "question", "plural"];
-npcVocab["mu"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you"];
-npcVocab["osv"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "question", "plural"];
+npcVocab["plu"] = ["address", "big", "hello", "how", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "nuland", "kiskus", "mnemonite", "mugly", "pluglo", "ignus", "question", "plural"];
+npcVocab["mu"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "nuland", "kiskus", "mnemonite", "mugly", "pluglo", "ignus"];
+npcVocab["osv"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "nuland", "kiskus", "mnemonite", "mugly", "pluglo", "ignus", "question", "plural"];
 
 let npcTranslations = {}
 npcTranslations["kish"] = {'a': 'a', 'b': 'b/p/v/f', 'd': 'd/t', 'e': 'e', 'g': 'ng', 'h': 'h', 'i': 'i', 'j': 'j/sh/ch', 'k': 'k/g', 'm': 'm', 'n': 'n', 'o': 'o', 'r': 'r/l', 's': 's/z', 'u': 'u', 'y': 'y'}
 npcTranslations["mnem"] = {'*': 'a/e/i/o/u/y', 'j': 'j/sh/ch', 'k': 'k/g', 'l': 'l', 'm': 'm', 'n': 'n', 'p': 'p/b', 'r': 'r', 's': 's/z', 't': 't/d', 'v': 'v/f'};
-npcTranslations["plu"] = {'address': 'address/location', 'big': 'big', 'hello': 'hello/goodbye', 'how': 'how', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', 'plural':'s', 'question':'?'};
-npcTranslations["mu"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you'};
-npcTranslations["osv"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', 'plural':'s', 'question':'?'};
+npcTranslations["plu"] = {'address': 'address/location', 'big': 'big', 'hello': 'hello/goodbye', 'how': 'how', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', "nuland":"nuland", "kiskus":"kiskus", "mnemonite":"mnemonite", "mugly":"mugly", "pluglo":"pluglo", "ignus":"ignus", 'plural':'s', 'question':'?'};
+npcTranslations["mu"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', "nuland":"nuland", "kiskus":"kiskus", "mnemonite":"mnemonite", "mugly":"mugly", "pluglo":"pluglo", "ignus":"ignus"};
+npcTranslations["osv"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', "nuland":"nuland", "kiskus":"kiskus", "mnemonite":"mnemonite", "mugly":"mugly", "pluglo":"pluglo", "ignus":"ignus", 'plural':'s', 'question':'?'};
 
 let npcTranslatedWords = {}
 npcTranslatedWords["kish"] = [];
@@ -1647,24 +1671,36 @@ npcTranslatedWords["plu"] = [];
 npcTranslatedWords["mu"] = [];
 npcTranslatedWords["osv"] = [];
 
+let playerNPCTranslatedWords = {}
+playerNPCTranslatedWords["kish"] = {};
+playerNPCTranslatedWords["mnem"] = {};
+playerNPCTranslatedWords["plu"] = {};
+playerNPCTranslatedWords["mu"] = {};
+playerNPCTranslatedWords["osv"] = {};
+
 
 let glyphNPCs = ["mu", "plu", "osv"];
 
 // text bubbles
 let all_skippable = [];
+let all_skippable_anywhere = [];
 let all_popups = [];
 // let engTextBubble = new MultiTextSpeechBubble("#FFF", "#000", ["Ello whats up how are you doing?"], 50, 50, cSCREEN_WIDTH-100, cSCREEN_WIDTH-100, "main", false, 2);
+let translationTextBubble = new TextSpeechBubble("#78f6ffcc", "#000", "", 50, 55+(cTEXT_BUBBLE_SIZE*2), cTEXT_BUBBLE_SIZE*0.7, cSCREEN_WIDTH-100, 1, "main", false, true);
+all_skippable_anywhere.push(translationTextBubble);
+all_popups.push(translationTextBubble);
+
 let engTextBubble = new TextSpeechBubble("#FFF", "#000", "Ello whats up how are you doing?", 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, 3, "main", false);
-all_skippable.push(engTextBubble);
+all_skippable_anywhere.push(engTextBubble);
 all_popups.push(engTextBubble);
 
 let glyphTextBubble = new GlyphTextSpeechBubble("#FFF", pluMessages["package delivery"], "plu", 50, 50, cSCREEN_WIDTH-100, 3, "main", false);
-all_skippable.push(glyphTextBubble);
+all_skippable_anywhere.push(glyphTextBubble);
 all_popups.push(glyphTextBubble);
 // glyphTextBubble.startRunning();
 
 let charTextBubble = new CharTextSpeechBubble("#FFF", kishMessages["package delivery"], "kish", 50, 50, cSCREEN_WIDTH-100, 3, "main", false);
-all_skippable.push(charTextBubble);
+all_skippable_anywhere.push(charTextBubble);
 all_popups.push(charTextBubble);
 // charTextBubble.startRunning();
 
@@ -1673,6 +1709,19 @@ all_skippable.push(profileInfoBox);
 all_popups.push(profileInfoBox);
 // profileInfoBox.startRunning();
 let profileText = "";
+
+let all_text_input_boxes = [];
+
+let ticketInfoBox = new AnimatedTextBox("#fef8f4", "#000", "<> <> <> NuCorp Transportation Ticket <> <> <> <> Destination:", cSCREEN_WIDTH-cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_Y_START+cPROFILE_PADDING, cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_HEIGHT+cPROFILE_PADDING, 50, "from-bottom", "main", false, 2)
+all_skippable.push(ticketInfoBox);
+all_popups.push(ticketInfoBox);
+let closeTicketButton = new Button("#ff0000", "#b60000", "#740000", "#000", " ", 0, 0, 50, 50, "close-ticket", true, "main", true);
+all_buttons.push(closeTicketButton);
+let ticketDestinationBox = new TextInputBox(0, 0, cPROFILE_WIDTH-(cPROFILE_PADDING*4), cNAV_BTN_HEIGHT*1.5, "main", true, true);
+all_text_input_boxes.push(ticketDestinationBox);
+let submitTicketButton = new Button("#33d021", "#1ba90b", "#0c7400", "#000", "APPROVE TICKET", cSCREEN_WIDTH-cPROFILE_WIDTH-(cPROFILE_PADDING*2),  cPROFILE_Y_START+cPROFILE_HEIGHT-25, cPROFILE_WIDTH-(cPROFILE_PADDING*4), cNAV_BTN_HEIGHT*1.5, "submit-ticket", true, "main", true);
+all_buttons.push(submitTicketButton);
+let ticketApproved = false
 
 let leftPage = new AnimatedTextBox("#ffffff", "#000", "AAA", cPAGE_X_START, cPAGE_Y_START, cPAGE_WIDTH, cPAGE_HEIGHT, cTEXT_BUBBLE_SIZE, "none", "handbook", false);
 all_popups.push(leftPage);
@@ -1686,7 +1735,6 @@ all_buttons.push(prevPage);
 let nextPage = new Button("#dee2e7", "#b6dae8", "#677786", "#0b0b2e", "  > ", cPAGE_X_START-15+(cPAGE_WIDTH*2)-cPAGE_BTN_SIZE, cPAGE_Y_START+(cPAGE_HEIGHT/2), cPAGE_BTN_SIZE, cPAGE_BTN_SIZE, "next-page", true, "handbook", true);
 all_buttons.push(nextPage);
 
-let all_text_input_boxes = [];
 // let textInputBox = new TextInputBox(1000, 100, 200, 50, "main", true);
 // all_text_input_boxes.push(textInputBox);
 
@@ -1705,9 +1753,11 @@ all_main_nav_buttons.push(showProfileButton);
 let showHandbookPage = new Button("#ffd182", "#ffbe56", "#b76e00", "#000", "Handbook Page", cSCREEN_WIDTH*0.7, cDESK_Y_START+40-cNAV_BTN_HEIGHT, 400, cNAV_BTN_HEIGHT, "handbook-page", true, "main", true);
 all_buttons.push(showHandbookPage);
 all_main_nav_buttons.push(showHandbookPage);
+let writeTicket = new Button("#8de390", "#3ad63a", "#008a05", "#000", "Write Ticket", cSCREEN_WIDTH*0.7, cDESK_Y_START+30-(cNAV_BTN_HEIGHT*2), 400, cNAV_BTN_HEIGHT, "write-ticket", true, "main", false);
+all_buttons.push(writeTicket);
+// all_main_nav_buttons.push(writeTicket);
 let customerDoneButton = new Button("#383838", "#262626", "#000000", "#ffffff", "You're all set", cSCREEN_WIDTH*0.7-(cDIALOGUE_BTN_WIDTH-400), cDESK_Y_START+40-(cNAV_BTN_HEIGHT*2)-cDIALOGUE_BTN_HEIGHT-75, cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "customer-done", true, "main", false);
 all_buttons.push(customerDoneButton);
-all_main_nav_buttons.push(customerDoneButton);
 
 
 
@@ -1729,7 +1779,6 @@ all_buttons.push(sendDeliveryButton);
 
 // cat dialogue options
 let catTalkDialogues = [];
-let all_skippable_anywhere = [];
 let catTalkDialogueSelection = "";
 let catTalkStage = "start";
 let dialogueHideDelay = 100;
@@ -1763,7 +1812,7 @@ catTalkDialogues.push(catTalkOptTranslate);
 let catTalkOptRandom = new Button("#383838", "#262626", "#000000", "#ffffff", "Any words of wisdom?", 100, cDIALOGUE_BTN_Y, cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "cat-talk-random", true, "cat", false);
 catTalkDialogues.push(catTalkOptRandom);
 
-let alertText = new Alert(cSCREEN_WIDTH*0.6, 250, "main");
+let alertText = new Alert(cSCREEN_WIDTH*0.4, cSCREEN_HEIGHT*0.4, "main");
 // alertText.startAlert(":3");
 all_sprites.push(alertText)
 
@@ -1798,17 +1847,19 @@ for (let n = 0; n < cNPC_TYPES.length; n++){
       img.src = cBASE_IMG_DIR+"languages/"+npcPageType+"-"+npcVocab[npcPageType][i]+".png";
       if (glyphNPCs.includes(npcPageType)){
         imgObj = new BasicImg(img, currX, currY, cGLYPH_BOOK_HEIGHT, cGLYPH_BOOK_HEIGHT, false);
-        textInputBox = new TextInputBox(currX+cGLYPH_BOOK_HEIGHT, currY, 200, cGLYPH_BOOK_HEIGHT, "handbook", false);
+        textInputBox = new TextInputBox(currX+cGLYPH_BOOK_HEIGHT, currY, 150, cGLYPH_BOOK_HEIGHT, "handbook", false, true, "");
+        playerNPCTranslatedWords[npcPageType][npcVocab[npcPageType][i]] = textInputBox;
 
         currY += cGLYPH_BOOK_HEIGHT;
         if (currY+cGLYPH_BOOK_HEIGHT >= maxY){
           // next col
           currY = startY;
-          currX += cGLYPH_BOOK_HEIGHT+200;
+          currX += cGLYPH_BOOK_HEIGHT+150;
         }
       } else {
         imgObj = new BasicImg(img, currX, currY, cGLYPH_BOOK_HEIGHT*0.75, cGLYPH_BOOK_HEIGHT, false);
-        textInputBox = new TextInputBox(currX+(cGLYPH_BOOK_HEIGHT*0.75), currY, 100, cGLYPH_BOOK_HEIGHT, "handbook", false);
+        textInputBox = new TextInputBox(currX+(cGLYPH_BOOK_HEIGHT*0.75), currY, 100, cGLYPH_BOOK_HEIGHT, "handbook", false, true, "");
+        playerNPCTranslatedWords[npcPageType][npcVocab[npcPageType][i]] = textInputBox;
 
         currY += cGLYPH_BOOK_HEIGHT;
         if (currY+cGLYPH_BOOK_HEIGHT >= maxY){
@@ -1824,7 +1875,8 @@ for (let n = 0; n < cNPC_TYPES.length; n++){
     }
   }
 }
-
+generalLanguageInput = new TextInputBox((cSCREEN_WIDTH/2)-(cSCREEN_WIDTH*0.15), cSCREEN_HEIGHT*0.4, cSCREEN_WIDTH*0.3, 150, "main", false, true, "");
+// all_text_input_boxes.push(generalLanguageInput);
 
 console.log("Defining key + mouse binds");
 // Get Keys
@@ -1839,6 +1891,62 @@ document.addEventListener("keydown", function (e){
   all_text_input_boxes.forEach((item) => {
     item.check_keypress(e.key);
   });
+
+  if (generalLanguageInput.showing){
+    generalLanguageInput.check_keypress(e.key); // TODO: update related
+    playerNPCTranslatedWords[npcType][activeCharInfo[2]].currentText = generalLanguageInput.currentText;
+  }
+
+  if (e.key.length == 1){
+    let translatedText = "";
+    if (glyphNPCs.includes(npcType)){
+      npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", deliveryDestination);
+      let temp = npcText.split(", ");
+      for (let i = 0; i < temp.length; i++){
+        if (npcTranslatedWords[npcType].includes(temp[i])){
+          translatedText += npcTranslations[npcType][temp[i]];
+        } else {
+          if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+            translatedText += "...";
+          } else {
+            translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+            translatedText += "?";
+          }
+        }
+        translatedText += " "
+      }
+  
+      translationTextBubble.resetText(translatedText);
+      translationTextBubble.startRunning();
+      translationTextBubble.skip("main");
+    } else if (npcType != ""){
+      if (npcType == "mnem"){
+        npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", mnemPlaceNames[deliveryDestination]);
+      } else {
+        npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", kishPlaceNames[deliveryDestination]);
+      }
+  
+      let temp = npcText.split("");
+      for (let i = 0; i < temp.length; i++){
+        if (npcTranslatedWords[npcType].includes(temp[i])){
+          translatedText += npcTranslations[npcType][temp[i]];
+        } else {
+          if (temp[i] == " "){
+            translatedText += " ";
+          } else if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+            translatedText += "?";
+          } else {
+            translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+          }
+        }
+        translatedText += " "
+      }
+  
+      translationTextBubble.resetText(translatedText);
+      translationTextBubble.startRunning();
+      translationTextBubble.skip("main");
+    }
+  }
 });
 
 document.addEventListener("keyup", function (e){
@@ -1929,6 +2037,10 @@ document.addEventListener("mousedown", function(e) {
         for (let i = 0; i < all_main_nav_buttons.length; i++){
           all_main_nav_buttons[i].show();
         }
+        if (taskType == "transportation ticket") writeTicket.show();
+        if (deliveryDone || ticketApproved){
+          customerDoneButton.show();
+        }
       } if (item.identifier == "show-profile"){
         profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
         profileInfoBox.restartText();
@@ -1938,6 +2050,35 @@ document.addEventListener("mousedown", function(e) {
         for (let i = 0; i < all_main_nav_buttons.length; i++){
           all_main_nav_buttons[i].hide();
         }
+        writeTicket.hide();
+        customerDoneButton.hide();
+      } 
+
+      if (item.identifier == "close-ticket"){
+        ticketInfoBox.y = cSCREEN_HEIGHT;
+        ticketInfoBox.startRunning();
+        closeTicketButton.hide();
+        submitTicketButton.hide();
+
+        for (let i = 0; i < all_main_nav_buttons.length; i++){
+          all_main_nav_buttons[i].show();
+        }
+        if (taskType == "transportation ticket") writeTicket.show();
+        if (deliveryDone || ticketApproved){
+          customerDoneButton.show();
+        }
+      } if (item.identifier == "write-ticket"){
+        ticketInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
+        ticketInfoBox.restartText();
+        ticketInfoBox.startRunning();
+        closeTicketButton.show();
+        submitTicketButton.show();
+        
+        for (let i = 0; i < all_main_nav_buttons.length; i++){
+          all_main_nav_buttons[i].hide();
+        }
+        writeTicket.hide();
+        customerDoneButton.hide();
       } 
       
       if (item.identifier == "send-delivery"){
@@ -1945,15 +2086,37 @@ document.addEventListener("mousedown", function(e) {
         deliveryDone = true;
         customerDoneButton.show();
       }
+      if (item.identifier == "submit-ticket"){
+        ticketApproved = true;
+        ticketDestinationBox.prefilledText = ticketDestinationBox.currentText;
+        ticketDestinationBox.editable = false;
+      }
       if (item.identifier == "customer-done"){
         // TODO: add ticket resets
         numCustomersServed++;
-        if (finalDeliverySelection == deliveryDestination){
-          numCustomerSuccesses++;
-          alertText.startAlert("Successful delivery!", "#00FF00");
+        if (numCustomersServed % 5 == 0){
+          numAvailableTranslations++;
+        }
+        if (taskType == "transportation ticket"){
+          if (ticketDestinationBox.prefilledText.toLowerCase() == deliveryDestination){
+            numCustomerSuccesses++;
+            alertText.startAlert("Correct Ticket!", "#00FF00");
+          } else {
+            if (cPLACE_NAMES.includes(ticketDestinationBox.prefilledText.toLowerCase())){
+              alertText.startAlert("Wrong destination location", "#FF0000");
+            } else {
+              alertText.startAlert("Invalid destination location", "#FF0000");
+            }
+  
+          }
         } else {
-          alertText.startAlert("Wrong delivery location", "#FF0000");
-
+          if (finalDeliverySelection == deliveryDestination){
+            numCustomerSuccesses++;
+            alertText.startAlert("Successful delivery!", "#00FF00");
+          } else {
+            alertText.startAlert("Wrong delivery location", "#FF0000");
+  
+          }
         }
         npc_sprite_opts[npcType][npcVariation].hide();
         package1.hide();
@@ -1961,11 +2124,15 @@ document.addEventListener("mousedown", function(e) {
         engTextBubble.hide();
         glyphTextBubble.hide();
         charTextBubble.hide();
+        translationTextBubble.hide();
         npcType = "";
         deliveryDone = false;
         finalDeliverySelection = "";
         currentDeliverySelection = "";
         customerDoneButton.hide();
+        ticketDestinationBox.currentText = "";
+        ticketDestinationBox.editable = true;
+        ticketApproved = false;
       }
 
       if (item.identifier == "handbook-page"){
@@ -2007,6 +2174,29 @@ document.addEventListener("mousedown", function(e) {
       catTalkDialogueSelection = item.identifier;
     }
   });
+
+  activeCharInfo = null;
+  generalLanguageInput.currentText = "";
+  generalLanguageInput.hide();
+  let charGlyphInfo;
+  if (npcType != "eng"){
+    if (glyphNPCs.includes(npcType)){
+      charGlyphInfo = glyphTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
+      if (charGlyphInfo != -1){
+        activeCharInfo = charGlyphInfo;
+      }
+    } else {
+      charGlyphInfo = charTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
+      if (charGlyphInfo != -1){
+        activeCharInfo = charGlyphInfo;
+      }
+    }
+  }
+  if (activeCharInfo){
+    generalLanguageInput.show();
+    generalLanguageInput.editing = true;
+    generalLanguageInput.currentText = playerNPCTranslatedWords[npcType][activeCharInfo[2]].currentText;
+  }
 });
 
 document.addEventListener("touchstart", function(e) { 
@@ -2032,6 +2222,7 @@ document.addEventListener("touchstart", function(e) {
       if (item.identifier == "nav-main") scene = "main";
       if (item.identifier == "nav-delivery") scene = "delivery";
       if (item.identifier == "nav-cat") scene = "cat";
+
       if (item.identifier == "next-page"){
         if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
           for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
@@ -2070,6 +2261,9 @@ document.addEventListener("touchstart", function(e) {
         for (let i = 0; i < all_main_nav_buttons.length; i++){
           all_main_nav_buttons[i].show();
         }
+        if (deliveryDone || ticketApproved){
+          customerDoneButton.show();
+        }
       } if (item.identifier == "show-profile"){
         profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
         profileInfoBox.restartText();
@@ -2079,6 +2273,7 @@ document.addEventListener("touchstart", function(e) {
         for (let i = 0; i < all_main_nav_buttons.length; i++){
           all_main_nav_buttons[i].hide();
         }
+        customerDoneButton.hide();
       }
 
       if (item.identifier == "handbook-page"){
@@ -2158,7 +2353,7 @@ function draw(){
       if (npcType == ""){
         // new customer!
         npcType = getRandomChoice(cNPC_TYPES);
-        deliveryDestination = getRandomDestination(npcType);
+        deliveryDestination = getRandomChoice(cPLACE_NAMES);
         if (glyphNPCs.includes(npcType)){
           npcName = getRandomNPCGlyphName(npcVocab[npcType]);
         } else {
@@ -2179,6 +2374,8 @@ function draw(){
 
         // chat text
         let npcTextTemplate;
+        let npcText = "";
+        let translatedText = "";
         if (npcType == "eng"){
           npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType];
           engTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), true);
@@ -2187,10 +2384,55 @@ function draw(){
           npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType]
           glyphTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), npcType, true);
           glyphTextBubble.startRunning();
+          
+          npcText = npcTextTemplate.replace("[]", deliveryDestination);
+          let temp = npcText.split(", ");
+          for (let i = 0; i < temp.length; i++){
+            if (npcTranslatedWords[npcType].includes(temp[i])){
+              translatedText += npcTranslations[npcType][temp[i]];
+            } else {
+              if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+                translatedText += "...";
+              } else {
+                translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+              }
+            }
+            translatedText += " "
+          }
         } else {
           npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType];
-          charTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), npcType, true);
+          if (npcType == "mnem"){
+            npcText = npcTextTemplate.replace("[]", mnemPlaceNames[deliveryDestination]);
+            charTextBubble.resetText(npcTextTemplate.replace("[]", mnemPlaceNames[deliveryDestination]), npcType, true);
+          } else {
+            npcText = npcTextTemplate.replace("[]", kishPlaceNames[deliveryDestination]);
+            charTextBubble.resetText(npcTextTemplate.replace("[]", kishPlaceNames[deliveryDestination]), npcType, true);
+          }
+
+          let temp = npcText.split("");
+          for (let i = 0; i < temp.length; i++){
+            if (npcTranslatedWords[npcType].includes(temp[i])){
+              translatedText += npcTranslations[npcType][temp[i]];
+            } else {
+              if (temp[i] == " "){
+                translatedText += " ";
+              } else if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+                translatedText += "?";
+              } else {
+                translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+              }
+            }
+            translatedText += " "
+          }
           charTextBubble.startRunning();
+        }
+
+        // TODO: translate
+        if (npcType == "eng"){
+          translationTextBubble.hide();
+        } else {
+          translationTextBubble.resetText(translatedText, true);
+          translationTextBubble.startRunning();
         }
 
         // profile
@@ -2202,6 +2444,17 @@ function draw(){
 
         profileInfoBox.text = profileText;
 
+        if (taskType == "transportation ticket"){
+          writeTicket.show();
+        } else {
+          writeTicket.hide();
+        }
+      }
+
+      if (glyphNPCs.includes(npcType)) {
+        translationTextBubble.y = glyphTextBubble.getEndY()+45;
+      } else if (npcType != "eng"){
+        translationTextBubble.y = charTextBubble.getEndY()+45;
       }
     } if (scene == "delivery"){
       if (taskType == "transportation ticket"){
@@ -2325,14 +2578,11 @@ function draw(){
           catTalkOptWhat.hide();
         } else if (catTalkDialogueSelection == "cat-talk-translate"){
           // TODO: check if the handbook is complete
-          if (canGetTranslation && numCustomersServed % 5 == 0){
+          if (numAvailableTranslations > 0){
             // TODO: update handbook
-            canGetTranslation = false;
+            numAvailableTranslations = 0;
             catTalkBubbles.resetText(getRandomChoice([["sure thing bud", "i've updated some stuff in your handbook"], ["cool beans pal", "i wrote some stuff in your handbook"]]), true);
           } else {
-            if (numCustomersServed % 5 != 0){
-              canGetTranslation = true;
-            }
             catTalkBubbles.resetText(["i'll give you some translations every 5 customers", "come back after the next "+(5-(numCustomersServed % 5).toString()+" customers")], true);
           }
           catTalkBubbles.startRunning();
@@ -2393,6 +2643,27 @@ function draw(){
     if (scene == "main"){
       closeProfileButton.x = profileInfoBox.currX+profileInfoBox.w-65;
       closeProfileButton.y = profileInfoBox.currY+15;
+      
+      closeTicketButton.x = ticketInfoBox.currX+ticketInfoBox.w-65;
+      closeTicketButton.y = ticketInfoBox.currY+15;
+      submitTicketButton.x = ticketInfoBox.currX+(cPROFILE_PADDING*1.5);
+      submitTicketButton.y = ticketInfoBox.currY+ticketInfoBox.w-15-cNAV_BTN_HEIGHT;
+      ticketDestinationBox.x = ticketInfoBox.currX+(cPROFILE_PADDING*1.5);
+      ticketDestinationBox.y = ticketInfoBox.currY+ticketInfoBox.w-15-(cNAV_BTN_HEIGHT*4);
+      if (ticketDestinationBox.currentText == ""){
+        submitTicketButton.hide();
+      } else if (ticketApproved){
+        submitTicketButton.hide();
+        ctx.strokeStyle = '#008113';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(submitTicketButton.x, submitTicketButton.y, submitTicketButton.w, submitTicketButton.h);
+
+        ctx.font = "75px sans-serif";
+        ctx.fillStyle = '#008113';
+        ctx.fillText("APPROVED", submitTicketButton.x+(submitTicketButton.w/6), submitTicketButton.y+(submitTicketButton.h/2)+25);
+      } else {
+        submitTicketButton.show();
+      }
 
       // check mouse over letter
       let charGlyphInfo = -1;
@@ -2411,6 +2682,15 @@ function draw(){
           }
         }
       }
+      if (activeCharInfo){
+        ctx.fillStyle = "#a2e9ffa9";
+        if (glyphNPCs.includes(npcType)){
+          ctx.fillRect(activeCharInfo[0], activeCharInfo[1], cGLYPH_HEIGHT, cGLYPH_HEIGHT);
+        } else {
+          ctx.fillRect(activeCharInfo[0], activeCharInfo[1], cGLYPH_HEIGHT*0.75, cGLYPH_HEIGHT);
+        }
+      }
+      generalLanguageInput.draw(scene);
     }
 
     if (scene == "handbook"){
