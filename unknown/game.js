@@ -27,7 +27,7 @@ const cCUST_Y_START = cSCREEN_HEIGHT-cNAV_HEIGHT-cCUST_SIZE-(cDESK_HEIGHT/2);
 const cNPC_TYPES = ["mu", "plu", "osv", "eng", "kish", "mnem"];
 const cTASK_TYPES = ["package delivery", "letter delivery", "transportation ticket"];
 const cNPC_MOODS = ["default", "grumpy", "chatty"];
-const cTASK_HANDLING_TYPES = ["", "", "", " error"];
+const cTASK_HANDLING_TYPES = [""];
 
 const cPROFILE_Y_START = cCUST_Y_START*1.1;
 const cPROFILE_WIDTH = (cSCREEN_WIDTH-cCUST_SIZE)-((cSCREEN_WIDTH-cCUST_SIZE)/4);
@@ -49,6 +49,10 @@ const cDELIVERY_Y_START = 250;
 const cDELIVERY_SIZE = 350;
 const cDELIVERY_X_SPACING = 400;
 const cDELIVERY_Y_SPACING = 400;
+
+const cDIALOGUE_BTN_WIDTH = 500;
+const cDIALOGUE_BTN_HEIGHT = 75;
+const cDIALOGUE_BTN_Y = (cSCREEN_HEIGHT-cNAV_HEIGHT)-215;
 
 // Resize stuff on window resize
 function resizeCanvas() {
@@ -284,6 +288,7 @@ class TextSpeechBubble {
     this.y = y;
     this.h = h;
     this.maxWidth = maxWidth;
+    this.currentMaxWidth = 0;
 
     this.running = false;
     this.currentText = [""];
@@ -325,6 +330,7 @@ class TextSpeechBubble {
     this.wordIdx = 0;
     this.currIdx = 0;
     this.showing = showing;
+    this.currentMaxWidth = 0;
   }
 
   checkNewLine(){
@@ -340,9 +346,12 @@ class TextSpeechBubble {
 
     let textWidth = ctx.measureText(this.currentText[this.lineIdx]+this.textWords[this.wordIdx]).width;
 
-    if (textWidth > this.maxWidth){
+    if (textWidth > (this.maxWidth-(this.padding*2))){
       // new line
       this.currentText.push("");
+      if (ctx.measureText(this.currentText[this.lineIdx]).width > this.currentMaxWidth){
+        this.currentMaxWidth = ctx.measureText(this.currentText[this.lineIdx]).width+(this.padding*2);
+      }
       this.lineIdx++;
     }
   }
@@ -350,12 +359,23 @@ class TextSpeechBubble {
   skip(sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
+        // while (this.currIdx < this.text.length){
+        //   if (this.text[this.currIdx] == " "){
+        //     this.wordIdx++;
+        //   }
+        //   this.checkNewLine();
+        //   this.currentText[this.lineIdx] += this.text[this.currIdx];
+        //   this.currIdx++;
+        // }
         while (this.currIdx < this.text.length){
-          this.checkNewLine();
-          this.currentText[this.lineIdx] += this.text[this.currIdx];
-          this.currIdx++;
-        }
-        this.running = false;
+          if (this.text[this.currIdx] == " "){
+              this.wordIdx++;
+              this.checkNewLine();
+            }
+            this.currentText[this.lineIdx] += this.text[this.currIdx];
+            this.currIdx++;
+          }
+          this.running = false;
       }
     }
   }
@@ -380,10 +400,10 @@ class TextSpeechBubble {
         if (this.running || this.currentText[0] != ""){
           if (this.running) {
             if (this.frames % this.framesPerChar == 0){
-              this.checkNewLine();
               if (this.currIdx < this.text.length){
                 if (this.text[this.currIdx] == " "){
                   this.wordIdx++;
+                  this.checkNewLine();
                 }
                 this.currentText[this.lineIdx] += this.text[this.currIdx];
                 this.currIdx++;
@@ -403,7 +423,7 @@ class TextSpeechBubble {
           if (this.lineIdx == 0) {
             ctx.roundRect(this.x, this.y, speechBubbleWidth, this.h*(this.lineIdx+1), [this.h/2]);
           } else {
-            ctx.roundRect(this.x, this.y, this.maxWidth, this.h*(this.lineIdx+1), [this.h/2]);
+            ctx.roundRect(this.x, this.y, this.currentMaxWidth, this.h*(this.lineIdx+1), [this.h/2]);
           }
           ctx.stroke();
           ctx.fill();
@@ -438,6 +458,14 @@ class GlyphTextSpeechBubble {
     this.activeScene = activeScene;
     this.showing = showing;
     this.roundedCorners = true;
+  }
+
+  show(){
+    this.showing = true;
+  }
+
+  hide(){
+    this.showing = false;
   }
 
   resetText(newText, languageType, showing){
@@ -571,6 +599,14 @@ class CharTextSpeechBubble {
     this.showing = showing;
   }
 
+  show(){
+    this.showing = true;
+  }
+
+  hide(){
+    this.showing = false;
+  }
+
   resetText(newText, languageType, showing){
     this.textWords = newText.split("");
     this.languageType = languageType;
@@ -680,40 +716,50 @@ class CharTextSpeechBubble {
 }
 
 class MultiTextSpeechBubble {
-  constructor(backgroundColor, textColor, texts, startX, startY, h, maxWidth, activeScene="", showing=true, framesPerChar=3){
+  constructor(backgroundColor, textColor, texts, startX, startY, h, maxWidth, activeScene="", showing=true, framesPerChar=3, waitBetweenBubbles=0){
     this.textBubbles = [];
     
+    this.startX = startX;
+    this.startY = startY;
+
     this.currX = startX;
     this.currY = startY;
     this.currTextBubble = 0;
-
+    
     let textBubble;
     for (let i = 0; i < texts.length; i++){
-      textBubble = new TextSpeechBubble(backgroundColor, textColor, texts[i], this.currX, this.currY, h, maxWidth, framesPerChar);
+      textBubble = new TextSpeechBubble(backgroundColor, textColor, texts[i], this.currX, this.currY, h, maxWidth, framesPerChar, activeScene, true);
       this.textBubbles.push(textBubble);
     }
-
+    
     this.padding = h/4;
-
+    
     this.activeScene = activeScene;
     this.showing = showing;
     this.started = false;
     this.finished = false;
-
+    
     this.h = h
     this.maxWidth = maxWidth;
     this.framesPerChar = framesPerChar;
     this.backgroundColor = backgroundColor;
     this.textColor = textColor;
+    
+    this.waitBetweenBubbles = waitBetweenBubbles;
+    this.currentWaiting = 0;
   }
-
+  
   resetText(newTexts, showing=true){
     this.textBubbles = [];
     this.currTextBubble = 0;
-
+    this.currentWaiting = 0;
+    
+    this.currX = this.startX;
+    this.currY = this.startY;
+    
     let textBubble;
     for (let i = 0; i < newTexts.length; i++){
-      textBubble = new TextSpeechBubble(this.backgroundColor, this.textColor, newTexts[i], this.currX, this.currY, this.h, this.maxWidth, this.framesPerChar);
+      textBubble = new TextSpeechBubble(this.backgroundColor, this.textColor, newTexts[i], this.currX, this.currY, this.h, this.maxWidth, this.framesPerChar, this.activeScene, true);
       this.textBubbles.push(textBubble);
     }
 
@@ -736,25 +782,17 @@ class MultiTextSpeechBubble {
     this.showing = false;
   }
 
+  isRunning(){
+    return (this.started && !this.finished);
+  }
+
   skip(sceneName){
     if (this.activeScene == "" || this.activeScene == sceneName){
       if (this.showing){
         if (this.started && !this.finished){
-          this.textBubbles[this.currTextBubble].skip();
+          this.textBubbles[this.currTextBubble].skip(this.activeScene);
           if (this.textBubbles[this.currTextBubble].isDone()){
-            // update next text bubble position
-            let txtBbl = this.textBubbles[this.currTextBubble];
-            this.currY = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
-            
-            // start next one
-            this.currTextBubble++;
-            if (this.currTextBubble >= this.textBubbles.length){
-              // done!
-              this.finished = true;
-            } else {
-              this.textBubbles[this.currTextBubble].y = this.currY
-              this.textBubbles[this.currTextBubble].startRunning();
-            }
+            this.currentWaiting++;
           }
         }
       }
@@ -762,7 +800,9 @@ class MultiTextSpeechBubble {
   }
 
   skipIfClicked(mouseX, mouseY, sceneName){
-    this.textBubbles[this.currTextBubble].skipIfClicked(mouseX, mouseY, sceneName);
+    if (!this.finished){
+      this.textBubbles[this.currTextBubble].skipIfClicked(mouseX, mouseY, sceneName);
+    }
   }
 
   draw(sceneName){
@@ -770,24 +810,88 @@ class MultiTextSpeechBubble {
       if (this.showing){
         if (this.started){
           for (let i = 0; i < this.textBubbles.length; i++){
-            this.textBubbles[i].draw();
+            this.textBubbles[i].draw(this.activeScene);
           }
 
           if (!this.finished){
             if (this.textBubbles[this.currTextBubble].isDone()){
-              // update next text bubble position
-              let txtBbl = this.textBubbles[this.currTextBubble];
-              this.currY = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
+              this.currentWaiting++;
+              // // update next text bubble position
+              // let txtBbl = this.textBubbles[this.currTextBubble];
+              // this.currY = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
               
-              // start next one
-              this.currTextBubble++;
-              if (this.currTextBubble >= this.textBubbles.length){
-                // done!
-                this.finished = true;
-              } else {
-                this.textBubbles[this.currTextBubble].y = this.currY
-                this.textBubbles[this.currTextBubble].startRunning();
+              // // start next one
+              // this.currTextBubble++;
+              // if (this.currTextBubble >= this.textBubbles.length){
+              //   // done!
+              //   this.finished = true;
+              // } else {
+              //   this.textBubbles[this.currTextBubble].y = this.currY;
+              //   this.textBubbles[this.currTextBubble].startRunning();
+              // }
+            }
+
+            if (this.currentWaiting > 0){
+              this.currentWaiting++;
+              if (this.currentWaiting > this.waitBetweenBubbles){
+                this.currentWaiting = 0;
+                // update next text bubble position
+                // this.currY = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
+                
+                // start next one
+                this.currTextBubble++;
+                if (this.currTextBubble >= this.textBubbles.length){
+                  // done!
+                  this.finished = true;
+                } else {
+                  if (this.currTextBubble > 1){
+                    let prevTxtBbl = this.textBubbles[this.currTextBubble-2];
+                    let currTxtBbl = this.textBubbles[this.currTextBubble-1];
+                    let newTxtBbl = this.textBubbles[this.currTextBubble];
+
+                    currTxtBbl.y = prevTxtBbl.y;
+                    prevTxtBbl.hide();
+                    newTxtBbl.y = currTxtBbl.y+(currTxtBbl.h*(currTxtBbl.lineIdx+1))+this.padding;
+                    newTxtBbl.startRunning();
+                  } else {
+                    let txtBbl = this.textBubbles[this.currTextBubble-1];
+                    this.textBubbles[this.currTextBubble].y = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
+                    this.textBubbles[this.currTextBubble].startRunning();
+                  }
+                  // if (this.currTextBubble > 1){
+                  //   this.textBubbles[this.currTextBubble-2].hide();
+                  //   this.textBubbles[this.currTextBubble-1].y = txtBbl.y+txtBbl.h+this.padding;
+                  //   this.textBubbles[this.currTextBubble].y = txtBbl.y+(txtBbl.h*(this.textBubbles[this.currTextBubble-1].lineIdx+1))+this.padding;
+                  //   // console.log(txtBbl.y+txtBbl.h+this.padding);
+                  // } else {
+                  //   this.textBubbles[this.currTextBubble].y = this.currY;
+                  //   this.textBubbles[this.currTextBubble].startRunning();
+                  // }
+                }
               }
+              // if (this.currentWaiting > this.waitBetweenBubbles){
+              //   this.currentWaiting = 0;
+              //   // update next text bubble position
+              //   let txtBbl = this.textBubbles[this.currTextBubble];
+              //   this.currY = txtBbl.y+(txtBbl.h*(txtBbl.lineIdx+1))+this.padding;
+                
+              //   // start next one
+              //   this.currTextBubble++;
+              //   if (this.currTextBubble >= this.textBubbles.length){
+              //     // done!
+              //     this.finished = true;
+              //   } else {
+              //     if (this.currTextBubble > 1){
+              //       this.textBubbles[this.currTextBubble-2].hide();
+              //       this.textBubbles[this.currTextBubble-1].y = txtBbl.y+txtBbl.h+this.padding;
+              //       this.textBubbles[this.currTextBubble].y = txtBbl.y+(txtBbl.h*(this.textBubbles[this.currTextBubble-1].lineIdx+1))+this.padding;
+              //       // console.log(txtBbl.y+txtBbl.h+this.padding);
+              //     } else {
+              //       this.textBubbles[this.currTextBubble].y = this.currY;
+              //       this.textBubbles[this.currTextBubble].startRunning();
+              //     }
+              //   }
+              // }
             }
           }
         }
@@ -1306,19 +1410,19 @@ class Alert {
         this.frames++;
 
         ctx.font = "75px sans-serif";
-        if (this.frames >= 60){
-          ctx.fillStyle = "#FFFFFFCC";
-        } else if (this.frames >= 62){
-          ctx.fillStyle = "#FFFFFF99";
+        if (this.frames >= 58){
+          ctx.fillStyle = this.textColor+"CC";
+        } else if (this.frames >= 61){
+          ctx.fillStyle = this.textColor+"99";
         } else if (this.frames >= 64){
-          ctx.fillStyle = "#FFFFFF66";
-        } else if (this.frames >= 66){
-          ctx.fillStyle = "#FFFFFF33";
+          ctx.fillStyle = this.textColor+"66";
+        } else if (this.frames >= 67){
+          ctx.fillStyle = this.textColor+"33";
         } else {
-          ctx.fillStyle = "#FFF";
+          ctx.fillStyle = this.textColor;
         }
 
-        if (this.frames < 10 || this.frames > 60){
+        if (this.frames < 10 || this.frames > 55){
           this.currY -= 3;
         }
 
@@ -1332,8 +1436,9 @@ class Alert {
     }
   }
 
-  startAlert(text){
+  startAlert(text, textColor){
     this.text = text;
+    this.textColor = textColor;
     this.running = true;
     this.currX = this.x;
     this.currY = this.y;
@@ -1456,6 +1561,11 @@ let taskHandlingType = "";
 let message = "";
 let deliveryDestination = "";
 let currentDeliverySelection = "";
+let finalDeliverySelection = "";
+let numCustomersServed = 0;
+let numCustomerSuccesses = 0;
+let canGetTranslation = false;
+let deliveryDone = false;
 
 // buttons
 let all_buttons = [];
@@ -1474,6 +1584,8 @@ let all_sprites = [];
 
 let guy = new Sprite("guy/guy", 3, 10, cSCREEN_WIDTH-750, cCUST_Y_START, 750, 750, true, "cat");
 all_sprites.push(guy);
+let guyTalk = new Sprite("guy/guy-talk", 3, 10, cSCREEN_WIDTH-750, cCUST_Y_START, 750, 750, false, "cat");
+all_sprites.push(guyTalk);
 
 // customer sprites
 let kish_sprites = [];
@@ -1593,6 +1705,10 @@ all_main_nav_buttons.push(showProfileButton);
 let showHandbookPage = new Button("#ffd182", "#ffbe56", "#b76e00", "#000", "Handbook Page", cSCREEN_WIDTH*0.7, cDESK_Y_START+40-cNAV_BTN_HEIGHT, 400, cNAV_BTN_HEIGHT, "handbook-page", true, "main", true);
 all_buttons.push(showHandbookPage);
 all_main_nav_buttons.push(showHandbookPage);
+let customerDoneButton = new Button("#383838", "#262626", "#000000", "#ffffff", "You're all set", cSCREEN_WIDTH*0.7-(cDIALOGUE_BTN_WIDTH-400), cDESK_Y_START+40-(cNAV_BTN_HEIGHT*2)-cDIALOGUE_BTN_HEIGHT-75, cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "customer-done", true, "main", false);
+all_buttons.push(customerDoneButton);
+all_main_nav_buttons.push(customerDoneButton);
+
 
 
 let nulandDelivery = new ClickableSprite("nuland", cDELIVERY_X_START, cDELIVERY_Y_START, cDELIVERY_SIZE, cDELIVERY_SIZE, false, true, "delivery", "delivery-nuland");
@@ -1611,6 +1727,41 @@ all_buttons.push(ignusDelivery);
 let sendDeliveryButton = new Button("#33d021", "#1ba90b", "#0c7400", "#000000", "Send for Delivery", cSCREEN_WIDTH*0.7, 50, 400, cNAV_BTN_HEIGHT, "send-delivery", true, "delivery", true);
 all_buttons.push(sendDeliveryButton);
 
+// cat dialogue options
+let catTalkDialogues = [];
+let all_skippable_anywhere = [];
+let catTalkDialogueSelection = "";
+let catTalkStage = "start";
+let dialogueHideDelay = 100;
+let catRandomDialogues = [
+  ["some languages use glyphs for whole words and some use letters", "it can be helpful knowing which ones are which, which you can find in your handbook"],
+  ["heeheehoho"]
+];
+let catTalkBubbles = new MultiTextSpeechBubble("#FFF", "#000", ["Ello whats up how are you doing?"], 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, "cat", false, 3, 40);
+// catTalkBubbles.startRunning();
+all_skippable_anywhere.push(catTalkBubbles);
+all_popups.push(catTalkBubbles);
+
+
+let catTalkOptHello = new Button("#383838", "#262626", "#000000", "#ffffff", "Hello?", 100, cDIALOGUE_BTN_Y, cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "cat-talk-hello", true, "cat", true);
+catTalkDialogues.push(catTalkOptHello);
+
+let catTalkOptNewEmp = new Button("#383838", "#262626", "#000000", "#ffffff", "Yeah", 100, cDIALOGUE_BTN_Y, cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "cat-talk-new", true, "cat", false);
+catTalkDialogues.push(catTalkOptNewEmp);
+let catTalkOptNotNewEmp = new Button("#383838", "#262626", "#000000", "#ffffff", "Nope", 100, cDIALOGUE_BTN_Y-(cDIALOGUE_BTN_HEIGHT+15), cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "cat-talk-not-new", true, "cat", false);
+catTalkDialogues.push(catTalkOptNotNewEmp);
+
+let catTalkOptHelp1 = new Button("#383838", "#262626", "#000000", "#ffffff", "What am I supposed to be doing?", 100, cDIALOGUE_BTN_Y, cDIALOGUE_BTN_WIDTH*1.5, cDIALOGUE_BTN_HEIGHT, "cat-talk-help", true, "cat", false);
+catTalkDialogues.push(catTalkOptHelp1);
+let catTalkOptHelp2 = new Button("#383838", "#262626", "#000000", "#ffffff", "How do I know what people are saying?", 100, cDIALOGUE_BTN_Y-(cDIALOGUE_BTN_HEIGHT+15), cDIALOGUE_BTN_WIDTH*1.5, cDIALOGUE_BTN_HEIGHT, "cat-talk-help-customers", true, "cat", false);
+catTalkDialogues.push(catTalkOptHelp2);
+let catTalkOptWhat = new Button("#383838", "#262626", "#000000", "#ffffff", "That's a weird name", 100, cDIALOGUE_BTN_Y-(cDIALOGUE_BTN_HEIGHT+15)*2, cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "cat-talk-weird", true, "cat", false);
+catTalkDialogues.push(catTalkOptWhat);
+
+let catTalkOptTranslate = new Button("#383838", "#262626", "#000000", "#ffffff", "Can you give me some translations?", 100, cDIALOGUE_BTN_Y-(cDIALOGUE_BTN_HEIGHT+15), cDIALOGUE_BTN_WIDTH*1.5, cDIALOGUE_BTN_HEIGHT, "cat-talk-translate", true, "cat", false);
+catTalkDialogues.push(catTalkOptTranslate);
+let catTalkOptRandom = new Button("#383838", "#262626", "#000000", "#ffffff", "Any words of wisdom?", 100, cDIALOGUE_BTN_Y, cDIALOGUE_BTN_WIDTH, cDIALOGUE_BTN_HEIGHT, "cat-talk-random", true, "cat", false);
+catTalkDialogues.push(catTalkOptRandom);
 
 let alertText = new Alert(cSCREEN_WIDTH*0.6, 250, "main");
 // alertText.startAlert(":3");
@@ -1712,6 +1863,9 @@ document.addEventListener("mousemove", function(e) {
   all_text_input_boxes.forEach((item) => {
     item.check_hovering(mousePos.x, mousePos.y, scene);
   });
+  catTalkDialogues.forEach((item) => {
+    item.is_hovering(mousePos.x, mousePos.y, scene);
+  });
 });
 
 document.addEventListener("mousedown", function(e) { 
@@ -1720,6 +1874,147 @@ document.addEventListener("mousedown", function(e) {
   mousePos.x = (e.x-cvs.getBoundingClientRect().left) * xScale;
   mousePos.y = (e.y-cvs.getBoundingClientRect().top) * yScale;
 
+  mouseDown = true;
+  let noButtonClicked = true;
+  all_buttons.forEach((item) => {
+    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
+      noButtonClicked = false;
+      // check if nav change
+      if (item.identifier == "nav-handbook"){
+        scene = "handbook";
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+          }
+        }
+      }
+      if (item.identifier == "nav-main") scene = "main";
+      if (item.identifier == "nav-delivery") scene = "delivery";
+      if (item.identifier == "nav-cat") scene = "cat";
+      if (item.identifier == "next-page"){
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+          }
+        }
+        pageNum++;
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+          }
+        }
+      } if (item.identifier == "prev-page"){
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+          }
+        }
+        
+        if (pageNum-1 >= 0){
+          pageNum--;
+        }
+
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+          }
+        }
+      }
+
+      if (item.identifier == "close-profile"){
+        profileInfoBox.y = cSCREEN_HEIGHT;
+        profileInfoBox.startRunning();
+        closeProfileButton.hide();
+
+        for (let i = 0; i < all_main_nav_buttons.length; i++){
+          all_main_nav_buttons[i].show();
+        }
+      } if (item.identifier == "show-profile"){
+        profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
+        profileInfoBox.restartText();
+        profileInfoBox.startRunning();
+        closeProfileButton.show();
+        
+        for (let i = 0; i < all_main_nav_buttons.length; i++){
+          all_main_nav_buttons[i].hide();
+        }
+      } 
+      
+      if (item.identifier == "send-delivery"){
+        finalDeliverySelection = currentDeliverySelection;
+        deliveryDone = true;
+        customerDoneButton.show();
+      }
+      if (item.identifier == "customer-done"){
+        // TODO: add ticket resets
+        numCustomersServed++;
+        if (finalDeliverySelection == deliveryDestination){
+          numCustomerSuccesses++;
+          alertText.startAlert("Successful delivery!", "#00FF00");
+        } else {
+          alertText.startAlert("Wrong delivery location", "#FF0000");
+
+        }
+        npc_sprite_opts[npcType][npcVariation].hide();
+        package1.hide();
+        letter1.hide();
+        engTextBubble.hide();
+        glyphTextBubble.hide();
+        charTextBubble.hide();
+        npcType = "";
+        deliveryDone = false;
+        finalDeliverySelection = "";
+        currentDeliverySelection = "";
+        customerDoneButton.hide();
+      }
+
+      if (item.identifier == "handbook-page"){
+        scene = "handbook";
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+          }
+        }
+        pageNum = cNPC_TYPES.indexOf(npcType);
+        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+          }
+        }
+      }
+
+      if (item.identifier.substring(0, 8) == "delivery"){
+        if (!deliveryDone){
+          currentDeliverySelection = item.identifier.substring(9);
+        }
+      }
+    }
+  });
+  if (noButtonClicked) currentDeliverySelection = "";
+
+  all_skippable.forEach((item) => {
+    item.skipIfClicked(mousePos.x, mousePos.y, scene);
+  });
+  all_skippable_anywhere.forEach((item) => {
+    item.skip(scene);
+  });
+  all_text_input_boxes.forEach((item) => {
+    item.check_clicked(mousePos.x, mousePos.y, scene);
+  });
+
+  catTalkDialogues.forEach((item) => {
+    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
+      catTalkDialogueSelection = item.identifier;
+    }
+  });
+});
+
+document.addEventListener("touchstart", function(e) { 
+  xScale = cvs.width/cvs.getBoundingClientRect().width;
+  yScale = cvs.height/cvs.getBoundingClientRect().height;
+  mousePos.x = (e.x-cvs.getBoundingClientRect().left) * xScale;
+  mousePos.y = (e.y-cvs.getBoundingClientRect().top) * yScale;
+  
   mouseDown = true;
   let noButtonClicked = true;
   all_buttons.forEach((item) => {
@@ -1811,110 +2106,17 @@ document.addEventListener("mousedown", function(e) {
   all_skippable.forEach((item) => {
     item.skipIfClicked(mousePos.x, mousePos.y, scene);
   });
+  all_skippable_anywhere.forEach((item) => {
+    item.skip(scene);
+  });
   all_text_input_boxes.forEach((item) => {
     item.check_clicked(mousePos.x, mousePos.y, scene);
   });
-});
 
-document.addEventListener("touchstart", function(e) { 
-  xScale = cvs.width/cvs.getBoundingClientRect().width;
-  yScale = cvs.height/cvs.getBoundingClientRect().height;
-  mousePos.x = (e.x-cvs.getBoundingClientRect().left) * xScale;
-  mousePos.y = (e.y-cvs.getBoundingClientRect().top) * yScale;
-  
-  mouseDown = true;
-  currentDeliverySelection = "";
-  all_buttons.forEach((item) => {
+  catTalkDialogues.forEach((item) => {
     if (item.is_clicked(mousePos.x, mousePos.y, scene)){
-      noButtonClicked = false;
-      // check if nav change
-      if (item.identifier == "nav-handbook"){
-        scene = "handbook";
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
-      }
-      if (item.identifier == "nav-main") scene = "main";
-      if (item.identifier == "nav-delivery") scene = "delivery";
-      if (item.identifier == "nav-cat") scene = "cat";
-      if (item.identifier == "next-page"){
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
-          }
-        }
-        pageNum++;
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
-      } if (item.identifier == "prev-page"){
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
-          }
-        }
-        
-        if (pageNum-1 >= 0){
-          pageNum--;
-        }
-
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
-      }
-
-      if (item.identifier == "close-profile"){
-        profileInfoBox.y = cSCREEN_HEIGHT;
-        profileInfoBox.startRunning();
-        closeProfileButton.hide();
-
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].show();
-        }
-      } if (item.identifier == "show-profile"){
-        profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
-        profileInfoBox.restartText();
-        profileInfoBox.startRunning();
-        closeProfileButton.show();
-        
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].hide();
-        }
-      }
-
-      if (item.identifier == "handbook-page"){
-        scene = "handbook";
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
-          }
-        }
-        pageNum = cNPC_TYPES.indexOf(npcType);
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
-      }
-
-      if (item.identifier.substring(0, 8) == "delivery"){
-        currentDeliverySelection = item.identifier.substring(9);
-      }
+      catTalkDialogueSelection = item.identifier;
     }
-  });
-  if (noButtonClicked) currentDeliverySelection = "";
-
-  all_skippable.forEach((item) => {
-    item.skipIfClicked(mousePos.x, mousePos.y, scene);
-  });
-  all_text_input_boxes.forEach((item) => {
-    item.check_clicked(mousePos.x, mousePos.y, scene);
   });
 });
 
@@ -2010,14 +2212,36 @@ function draw(){
         plugloDelivery.clickedOn = false;
         ignusDelivery.clickedOn = false;
         sendDeliveryButton.hide();
+      } else if (deliveryDone){
+        ctx.fillStyle = "#78f6ff";
+        ctx.fillRect(30, 30, cSCREEN_WIDTH*0.47, 100);
+  
+        ctx.fillStyle = "#000";
+        ctx.font = "55px sans-serif";
+        ctx.fillText("DELIVERED TO: "+finalDeliverySelection, 42, 105);
+        // ctx.fillText(finalDeliverySelection, 400, 105);
+  
+        nulandDelivery.clickedOn = false;
+        kiskusDelivery.clickedOn = false;
+        mnemoniteDelivery.clickedOn = false;
+        muglyDelivery.clickedOn = false;
+        plugloDelivery.clickedOn = false;
+        ignusDelivery.clickedOn = false;
+        if (finalDeliverySelection == "nuland") nulandDelivery.clickedOn = true;
+        if (finalDeliverySelection == "kiskus") kiskusDelivery.clickedOn = true;
+        if (finalDeliverySelection == "mnemonite") mnemoniteDelivery.clickedOn = true;
+        if (finalDeliverySelection == "mugly") muglyDelivery.clickedOn = true;
+        if (finalDeliverySelection == "pluglo") plugloDelivery.clickedOn = true;
+        if (finalDeliverySelection == "ignus") ignusDelivery.clickedOn = true;
+        sendDeliveryButton.hide();
       } else {
         ctx.fillStyle = "#78f6ff";
         ctx.fillRect(30, 30, cSCREEN_WIDTH*0.45, 100);
   
         ctx.fillStyle = "#000";
         ctx.font = "55px sans-serif";
-        ctx.fillText("DELIVER TO: ", 42, 105);
-        ctx.fillText(currentDeliverySelection, 400, 105);
+        ctx.fillText("DELIVER TO: "+currentDeliverySelection, 42, 105);
+        // ctx.fillText(currentDeliverySelection, 400, 105);
   
         if (currentDeliverySelection == "nuland") nulandDelivery.clickedOn = true;
         if (currentDeliverySelection == "kiskus") kiskusDelivery.clickedOn = true;
@@ -2043,6 +2267,124 @@ function draw(){
   
         buttonAnimFrameLoop++;
       }
+    } if (scene == "cat"){
+      ctx.fillStyle = "#817c7a";
+      ctx.fillRect(0, cDESK_Y_START, cSCREEN_WIDTH, cDESK_HEIGHT);
+      
+      if (catTalkDialogueSelection != ""){
+        if (catTalkDialogueSelection == "cat-talk-hello"){
+          catTalkStage = "intro-pt1";
+          catTalkBubbles.resetText(["heya kiddo", "new employee, huh?"], true);
+          catTalkBubbles.startRunning();
+          catTalkOptHello.hide();
+        } else if (catTalkDialogueSelection == "cat-talk-not-new"){
+          catTalkStage = "intro-pt2";
+          catTalkBubbles.resetText(["cool garbeanzo then", "my name's kert. that's short for kool queuekumbert III"], true);
+          catTalkBubbles.startRunning();
+
+          catTalkOptNewEmp.hide();
+          catTalkOptNotNewEmp.hide();
+        } else if (catTalkDialogueSelection == "cat-talk-new"){
+          catTalkStage = "intro-pt2";
+          catTalkBubbles.resetText(["welcome to the team pal", "my name's kert. that's short for kool queuekumbert III"], true);
+          catTalkBubbles.startRunning();
+
+          catTalkOptNewEmp.hide();
+          catTalkOptNotNewEmp.hide();
+        } else if (catTalkDialogueSelection == "cat-talk-weird"){
+          catTalkStage = "intro-pt2-weird";
+          catTalkBubbles.resetText(["mhm, and all rocks are round yeah?", "anyways, how can i help ya?"], true);
+          catTalkBubbles.startRunning();
+
+          catTalkOptHelp1.hide();
+          catTalkOptHelp2.hide();
+          catTalkOptWhat.hide();
+        } else if (catTalkDialogueSelection == "cat-talk-help"){
+          if (catTalkStage == "intro-pt2-help-customers"){
+            catTalkStage = "idle";
+          } else {
+            catTalkStage = "intro-pt2-help";
+          }
+          catTalkBubbles.resetText(["it's a pretty straightforward job", "if a customer give you a package or letter, deliver it to the right place", "if they want a transportation ticket, write em a ticket"], true);
+          catTalkBubbles.startRunning();
+
+          catTalkOptHelp1.hide();
+          catTalkOptHelp2.hide();
+          catTalkOptWhat.hide();
+        } else if (catTalkDialogueSelection == "cat-talk-help-customers"){
+          if (catTalkStage == "intro-pt2-help"){
+            catTalkStage = "idle";
+          } else {
+            catTalkStage = "intro-pt2-help-customers";
+          }
+          catTalkBubbles.resetText(["i suppose you aren't fluent in every language, huh?", "i'm sure you can figure it out", "try making notes in your handbook for what you think different characters and words mean", "i'll give you some translations for every 5 customer requests", "i put some in your notebook to start ya off"], true);
+          catTalkBubbles.startRunning();
+
+          catTalkOptHelp1.hide();
+          catTalkOptHelp2.hide();
+          catTalkOptWhat.hide();
+        } else if (catTalkDialogueSelection == "cat-talk-translate"){
+          // TODO: check if the handbook is complete
+          if (canGetTranslation && numCustomersServed % 5 == 0){
+            // TODO: update handbook
+            canGetTranslation = false;
+            catTalkBubbles.resetText(getRandomChoice([["sure thing bud", "i've updated some stuff in your handbook"], ["cool beans pal", "i wrote some stuff in your handbook"]]), true);
+          } else {
+            if (numCustomersServed % 5 != 0){
+              canGetTranslation = true;
+            }
+            catTalkBubbles.resetText(["i'll give you some translations every 5 customers", "come back after the next "+(5-(numCustomersServed % 5).toString()+" customers")], true);
+          }
+          catTalkBubbles.startRunning();
+          dialogueHideDelay = 100;
+
+          catTalkOptTranslate.hide();
+          catTalkOptRandom.hide();
+        } else if (catTalkDialogueSelection == "cat-talk-random"){
+          catTalkBubbles.resetText(getRandomChoice(catRandomDialogues), true);
+          catTalkBubbles.startRunning();
+          dialogueHideDelay = 100;
+          
+          catTalkOptTranslate.hide();
+          catTalkOptRandom.hide();
+        }
+        catTalkDialogueSelection = "";
+      }
+
+      if (catTalkBubbles.isRunning()){
+        guy.hide();
+        guyTalk.show();
+      } else {
+        guy.show();
+        guyTalk.hide();
+        if (catTalkStage == "intro-pt1"){
+          catTalkOptNewEmp.show();
+          catTalkOptNotNewEmp.show();
+        } else if (catTalkStage == "intro-pt2"){
+          catTalkOptHelp1.show();
+          catTalkOptHelp2.show();
+          catTalkOptWhat.show();
+        } else if (catTalkStage == "intro-pt2-weird"){
+          catTalkOptHelp1.show();
+          catTalkOptHelp2.show();
+        } else if (catTalkStage == "intro-pt2-help"){
+          catTalkOptHelp2.show();
+        } else if (catTalkStage == "intro-pt2-help-customers"){
+          catTalkOptHelp1.show();
+        } else if (catTalkStage == "idle"){
+          if (dialogueHideDelay < 0){
+            catTalkBubbles.hide();
+          } else {
+            dialogueHideDelay--;
+          }
+          catTalkOptTranslate.show();
+          catTalkOptRandom.show()
+        }
+      }
+
+      catTalkDialogues.forEach((item) => {
+        item.draw(scene);
+      });
     }
 
     all_popups.forEach((item) => {
