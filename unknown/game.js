@@ -133,6 +133,18 @@ function getRandomNPCGlyphName(glyphs) {
   return npcName;
 }
 
+function chooseRandomWordToTranslate(allWords, translatedWords){
+  let wordOptions = [];
+  for (let i = 0; i < allWords.length; i++){
+    if (translatedWords.includes(allWords[i])){
+      // pass
+    } else {
+      wordOptions.push(allWords[i]);
+    }
+  }
+  return getRandomChoice(wordOptions);
+}
+
 console.log("Defining classes");
 /* Class definitions */
 class Sprite {
@@ -1542,7 +1554,10 @@ let mouseDown = false;
 let keyPress = "";
 let shiftPress = false;
 
-let scene = "main"; // main, handbook, delivery, cat
+let scene = "title"; // main, handbook, delivery, cat
+let introPart = "logo";
+let introFrames = 0;
+let currentIntroFrame = 0;
 
 // handbook
 let pageNum = 0;
@@ -1565,13 +1580,16 @@ npc_profile_pics["mnem"].src = cBASE_IMG_DIR+"mnemote/mnemote-1.png";
 npc_profile_pics["osv"] = new Image();
 npc_profile_pics["osv"].src = cBASE_IMG_DIR+"osiv/osiv-3.png";
 
+bookshelfImg = new Image();
+bookshelfImg.src = cBASE_IMG_DIR+"bookshelf.png";
+
 let npc_profile_txt = {}
-npc_profile_txt["mu"] = "<> <> <> <> <> Muglyph <> Language Type: Glyphs";
-npc_profile_txt["plu"] = "<> <> <> <> <> Pluglyph <> Language Type: Glyphs";
-npc_profile_txt["osv"] = "<> <> <> <> <> Osiv <> Language Type: Glyphs";
-npc_profile_txt["eng"] = "<> <> <> <> <> Nulander <> Language Type: Letters";
-npc_profile_txt["kish"] = "<> <> <> <> <> Kishik <> Language Type: Letters";
-npc_profile_txt["mnem"] = "<> <> <> <> <> Mnemote <> Language Type: Letters";
+npc_profile_txt["mu"] = "<> <> <> <> <> <> Muglyph <> From Planet Mugly <> Language Type: Word Glyphs";
+npc_profile_txt["plu"] = "<> <> <> <> <> <> Pluglyph <> From Planet Pluglo <> Language Type: Word Glyphs";
+npc_profile_txt["osv"] = "<> <> <> <> <> <> Osiv <> From Planet Ignus <> Language Type: Word Glyphs";
+npc_profile_txt["eng"] = "<> <> <> <> <> <> <> Nulander <> From Planet Nuland <> Language Type: Letter Alphabets";
+npc_profile_txt["kish"] = "<> <> <> <> <> <> <> Kishik <> From Planet Kiskus <> Language Type: Letter Alphabets";
+npc_profile_txt["mnem"] = "<> <> <> <> <> <> <> Mnemote <> From Planet Mnemonite <> Language Type: Letter Alphabets";
 
 console.log("Defining sprites");
 // Task generation
@@ -1650,6 +1668,7 @@ npc_sprite_opts["mnem"] = mnem_sprites;
 npc_sprite_opts["osv"] = osv_sprites;
 npc_sprite_opts["eng"] = eng_sprites;
 
+let allTranslated = false;
 let npcVocab = {}
 npcVocab["kish"] = ["a", "b", "d", "e", "g", "h", "i", "j", "k", "m", "n", "o", "r", "s", "u", "y"];
 npcVocab["mnem"] = ['*', 'j', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v'];
@@ -1658,8 +1677,8 @@ npcVocab["mu"] = ["address", "big", "friend", "hello", "how", "like", "me", "mov
 npcVocab["osv"] = ["address", "big", "friend", "hello", "how", "like", "me", "move", "not", "object", "paper", "person", "small", "please", "want", "what", "when", "where", "who", "why", "you", "nuland", "kiskus", "mnemonite", "mugly", "pluglo", "ignus", "question", "plural"];
 
 let npcTranslations = {}
-npcTranslations["kish"] = {'a': 'a', 'b': 'b/p/v/f', 'd': 'd/t', 'e': 'e', 'g': 'ng', 'h': 'h', 'i': 'i', 'j': 'j/sh/ch', 'k': 'k/g', 'm': 'm', 'n': 'n', 'o': 'o', 'r': 'r/l', 's': 's/z', 'u': 'u', 'y': 'y'}
-npcTranslations["mnem"] = {'*': 'a/e/i/o/u/y', 'j': 'j/sh/ch', 'k': 'k/g', 'l': 'l', 'm': 'm', 'n': 'n', 'p': 'p/b', 'r': 'r', 's': 's/z', 't': 't/d', 'v': 'v/f'};
+npcTranslations["kish"] = {'a': 'a', 'b': '(b/p/v/f)', 'd': '(d/t)', 'e': 'e', 'g': 'ng', 'h': 'h', 'i': 'i', 'j': '(j/sh/ch)', 'k': '(k/g)', 'm': 'm', 'n': 'n', 'o': 'o', 'r': '(r/l)', 's': '(s/z)', 'u': 'u', 'y': 'y'}
+npcTranslations["mnem"] = {'*': '(a/e/i/o/u/y)', 'j': '(j/sh/ch)', 'k': '(k/g)', 'l': 'l', 'm': 'm', 'n': 'n', 'p': '(p/b)', 'r': 'r', 's': '(s/z)', 't': '(t/d)', 'v': '(v/f)'};
 npcTranslations["plu"] = {'address': 'address/location', 'big': 'big', 'hello': 'hello/goodbye', 'how': 'how', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', "nuland":"nuland", "kiskus":"kiskus", "mnemonite":"mnemonite", "mugly":"mugly", "pluglo":"pluglo", "ignus":"ignus", 'plural':'s', 'question':'?'};
 npcTranslations["mu"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', "nuland":"nuland", "kiskus":"kiskus", "mnemonite":"mnemonite", "mugly":"mugly", "pluglo":"pluglo", "ignus":"ignus"};
 npcTranslations["osv"] = {'address': 'address/location', 'big': 'big', 'friend': 'friend', 'hello': 'hello/goodbye', 'how': 'how', 'like': 'like', 'me': 'me', 'move': 'move/transport', 'not': 'not', 'object': 'object/thing', 'paper': 'paper/letter', 'person': 'person', 'small': 'small', 'please': 'please/thanks', 'want': 'want', 'what': 'what', 'when': 'when', 'where': 'where', 'who': 'who', 'why': 'why', 'you': 'you', "nuland":"nuland", "kiskus":"kiskus", "mnemonite":"mnemonite", "mugly":"mugly", "pluglo":"pluglo", "ignus":"ignus", 'plural':'s', 'question':'?'};
@@ -1677,7 +1696,6 @@ playerNPCTranslatedWords["mnem"] = {};
 playerNPCTranslatedWords["plu"] = {};
 playerNPCTranslatedWords["mu"] = {};
 playerNPCTranslatedWords["osv"] = {};
-
 
 let glyphNPCs = ["mu", "plu", "osv"];
 
@@ -1783,8 +1801,17 @@ let catTalkDialogueSelection = "";
 let catTalkStage = "start";
 let dialogueHideDelay = 100;
 let catRandomDialogues = [
-  ["some languages use glyphs for whole words and some use letters", "it can be helpful knowing which ones are which, which you can find in your handbook"],
-  ["heeheehoho"]
+  ["some languages use glyphs for whole words and some just use letters", "it can be helpful knowing which ones are which, which you can find in your handbook"],
+  ["heeheehoho"],
+  ["need a hand?", "well, i hope you don't because i don't have any"],
+  ["wow, i'm 'sort of' impressed", "it's a pun get it?", "cause you deal with sorting stuff"],
+  ["sometimes you have to think"],
+  ["muglyphs have a specific type of glyph for a location", "kinda looks like a leaf with a line or something"],
+  ["a lot of glyphs have similar looks for similar types of words"],
+  ["mnemotes have one letter for every vowel sound"],
+  ["if you put something on your head, it becomes a hat", "or just an object on your head", "if you're not very hat friendly"],
+  ["some of the glyphs for locations have parts that look like the people from those places"],
+  ["if you see something blue appear", "then that's pretty cool", "i like blue things"]
 ];
 let catTalkBubbles = new MultiTextSpeechBubble("#FFF", "#000", ["Ello whats up how are you doing?"], 50, 50, cTEXT_BUBBLE_SIZE, cSCREEN_WIDTH-100, "cat", false, 3, 40);
 // catTalkBubbles.startRunning();
@@ -1893,11 +1920,11 @@ document.addEventListener("keydown", function (e){
   });
 
   if (generalLanguageInput.showing){
-    generalLanguageInput.check_keypress(e.key); // TODO: update related
+    generalLanguageInput.check_keypress(e.key);
     playerNPCTranslatedWords[npcType][activeCharInfo[2]].currentText = generalLanguageInput.currentText;
   }
 
-  if (e.key.length == 1){
+  if (e.key.length == 1 || e.key.toLowerCase() == "backspace" || e.key.toLowerCase() == "delete"){
     let translatedText = "";
     if (glyphNPCs.includes(npcType)){
       npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", deliveryDestination);
@@ -1919,7 +1946,7 @@ document.addEventListener("keydown", function (e){
       translationTextBubble.resetText(translatedText);
       translationTextBubble.startRunning();
       translationTextBubble.skip("main");
-    } else if (npcType != ""){
+    } else if (npcType != "" && npcType != "eng"){
       if (npcType == "mnem"){
         npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", mnemPlaceNames[deliveryDestination]);
       } else {
@@ -1982,220 +2009,269 @@ document.addEventListener("mousedown", function(e) {
   mousePos.x = (e.x-cvs.getBoundingClientRect().left) * xScale;
   mousePos.y = (e.y-cvs.getBoundingClientRect().top) * yScale;
 
-  mouseDown = true;
-  let noButtonClicked = true;
-  all_buttons.forEach((item) => {
-    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
-      noButtonClicked = false;
-      // check if nav change
-      if (item.identifier == "nav-handbook"){
-        scene = "handbook";
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
+  if (scene == "title"){
+    scene = "intro";
+  } else if (scene == "intro"){
+    if (introPart == "logo"){
+      if (currentIntroFrame < LogoImgs.length-1){
+        currentIntroFrame = LogoImgs.length-1;
+      } else {
+        introPart = "welcome";
+        introFrames = 1;
+        currentIntroFrame = 0;
       }
-      if (item.identifier == "nav-main") scene = "main";
-      if (item.identifier == "nav-delivery") scene = "delivery";
-      if (item.identifier == "nav-cat") scene = "cat";
-      if (item.identifier == "next-page"){
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
-          }
-        }
-        pageNum++;
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
-      } if (item.identifier == "prev-page"){
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
-          }
-        }
-        
-        if (pageNum-1 >= 0){
-          pageNum--;
-        }
-
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
+    } else if (introPart == "welcome"){
+      introPart = "proud";
+      introFrames = 1;
+      currentIntroFrame = 0;
+    } else if (introPart == "proud"){
+      introPart = "customers";
+      introFrames = 1;
+      currentIntroFrame = 0;
+    } else if (introPart == "customers"){
+      introPart = "handbook";
+      introFrames = 0;
+      currentIntroFrame = 0;
+    } else if (introPart == "handbook"){
+      introPart = "logo-reverse";
+      introFrames = 1;
+      currentIntroFrame = -7;
+    } else if (introPart == "logo-reverse"){
+      if (currentIntroFrame < LogoReverseImgs.length){
+        currentIntroFrame = LogoReverseImgs.length;
+      } else {
+        introPart = "done";
+        introFrames = 1;
+        currentIntroFrame = 0;
+        scene = "main";
+        startMusic.pause();
+        musicStarted = false;
       }
-
-      if (item.identifier == "close-profile"){
-        profileInfoBox.y = cSCREEN_HEIGHT;
-        profileInfoBox.startRunning();
-        closeProfileButton.hide();
-
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].show();
-        }
-        if (taskType == "transportation ticket") writeTicket.show();
-        if (deliveryDone || ticketApproved){
-          customerDoneButton.show();
-        }
-      } if (item.identifier == "show-profile"){
-        profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
-        profileInfoBox.restartText();
-        profileInfoBox.startRunning();
-        closeProfileButton.show();
-        
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].hide();
-        }
-        writeTicket.hide();
-        customerDoneButton.hide();
-      } 
-
-      if (item.identifier == "close-ticket"){
-        ticketInfoBox.y = cSCREEN_HEIGHT;
-        ticketInfoBox.startRunning();
-        closeTicketButton.hide();
-        submitTicketButton.hide();
-
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].show();
-        }
-        if (taskType == "transportation ticket") writeTicket.show();
-        if (deliveryDone || ticketApproved){
-          customerDoneButton.show();
-        }
-      } if (item.identifier == "write-ticket"){
-        ticketInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
-        ticketInfoBox.restartText();
-        ticketInfoBox.startRunning();
-        closeTicketButton.show();
-        submitTicketButton.show();
-        
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].hide();
-        }
-        writeTicket.hide();
-        customerDoneButton.hide();
-      } 
-      
-      if (item.identifier == "send-delivery"){
-        finalDeliverySelection = currentDeliverySelection;
-        deliveryDone = true;
-        customerDoneButton.show();
-      }
-      if (item.identifier == "submit-ticket"){
-        ticketApproved = true;
-        ticketDestinationBox.prefilledText = ticketDestinationBox.currentText;
-        ticketDestinationBox.editable = false;
-      }
-      if (item.identifier == "customer-done"){
-        // TODO: add ticket resets
-        numCustomersServed++;
-        if (numCustomersServed % 5 == 0){
-          numAvailableTranslations++;
-        }
-        if (taskType == "transportation ticket"){
-          if (ticketDestinationBox.prefilledText.toLowerCase() == deliveryDestination){
-            numCustomerSuccesses++;
-            alertText.startAlert("Correct Ticket!", "#00FF00");
-          } else {
-            if (cPLACE_NAMES.includes(ticketDestinationBox.prefilledText.toLowerCase())){
-              alertText.startAlert("Wrong destination location", "#FF0000");
-            } else {
-              alertText.startAlert("Invalid destination location", "#FF0000");
+    }
+  } else {
+    mouseDown = true;
+    let noButtonClicked = true;
+    all_buttons.forEach((item) => {
+      if (item.is_clicked(mousePos.x, mousePos.y, scene)){
+        noButtonClicked = false;
+        // check if nav change
+        if (item.identifier == "nav-handbook"){
+          scene = "handbook";
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
             }
-  
           }
-        } else {
-          if (finalDeliverySelection == deliveryDestination){
-            numCustomerSuccesses++;
-            alertText.startAlert("Successful delivery!", "#00FF00");
+        }
+        if (item.identifier == "nav-main") scene = "main";
+        if (item.identifier == "nav-delivery") scene = "delivery";
+        if (item.identifier == "nav-cat") scene = "cat";
+        if (item.identifier == "next-page"){
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+            }
+          }
+          pageNum++;
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+            }
+          }
+        } if (item.identifier == "prev-page"){
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+            }
+          }
+          
+          if (pageNum-1 >= 0){
+            pageNum--;
+          }
+
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+            }
+          }
+        }
+
+        if (item.identifier == "close-profile"){
+          profileInfoBox.y = cSCREEN_HEIGHT;
+          profileInfoBox.startRunning();
+          closeProfileButton.hide();
+
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].show();
+          }
+          if (taskType == "transportation ticket") writeTicket.show();
+          if (deliveryDone || ticketApproved){
+            customerDoneButton.show();
+          }
+        } if (item.identifier == "show-profile"){
+          profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
+          profileInfoBox.restartText();
+          profileInfoBox.startRunning();
+          closeProfileButton.show();
+          
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].hide();
+          }
+          writeTicket.hide();
+          customerDoneButton.hide();
+        } 
+
+        if (item.identifier == "close-ticket"){
+          ticketInfoBox.y = cSCREEN_HEIGHT;
+          ticketInfoBox.startRunning();
+          closeTicketButton.hide();
+          submitTicketButton.hide();
+
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].show();
+          }
+          if (taskType == "transportation ticket") writeTicket.show();
+          if (deliveryDone || ticketApproved){
+            customerDoneButton.show();
+          }
+        } if (item.identifier == "write-ticket"){
+          ticketInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
+          ticketInfoBox.restartText();
+          ticketInfoBox.startRunning();
+          closeTicketButton.show();
+          submitTicketButton.show();
+          
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].hide();
+          }
+          writeTicket.hide();
+          customerDoneButton.hide();
+        } 
+        
+        if (item.identifier == "send-delivery"){
+          finalDeliverySelection = currentDeliverySelection;
+          deliveryDone = true;
+          customerDoneButton.show();
+        }
+        if (item.identifier == "submit-ticket"){
+          ticketApproved = true;
+          ticketDestinationBox.prefilledText = ticketDestinationBox.currentText;
+          ticketDestinationBox.editable = false;
+        }
+        if (item.identifier == "customer-done"){
+          // TODO: add ticket resets
+          numCustomersServed++;
+          if (numCustomersServed % 5 == 0){
+            numAvailableTranslations++;
+          }
+          if (taskType == "transportation ticket"){
+            if (ticketDestinationBox.prefilledText.toLowerCase() == deliveryDestination){
+              numCustomerSuccesses++;
+              alertText.startAlert("Correct Ticket!", "#00FF00");
+            } else {
+              if (cPLACE_NAMES.includes(ticketDestinationBox.prefilledText.toLowerCase())){
+                alertText.startAlert("Wrong destination location", "#FF0000");
+              } else {
+                alertText.startAlert("Invalid destination location", "#FF0000");
+              }
+    
+            }
           } else {
-            alertText.startAlert("Wrong delivery location", "#FF0000");
-  
+            if (finalDeliverySelection == deliveryDestination){
+              numCustomerSuccesses++;
+              alertText.startAlert("Successful delivery!", "#00FF00");
+            } else {
+              alertText.startAlert("Wrong delivery location", "#FF0000");
+    
+            }
           }
+          npc_sprite_opts[npcType][npcVariation].hide();
+          package1.hide();
+          letter1.hide();
+          engTextBubble.hide();
+          glyphTextBubble.hide();
+          charTextBubble.hide();
+          translationTextBubble.hide();
+          npcType = "";
+          deliveryDone = false;
+          finalDeliverySelection = "";
+          currentDeliverySelection = "";
+          customerDoneButton.hide();
+          ticketDestinationBox.currentText = "";
+          ticketDestinationBox.editable = true;
+          ticketApproved = false;
         }
-        npc_sprite_opts[npcType][npcVariation].hide();
-        package1.hide();
-        letter1.hide();
-        engTextBubble.hide();
-        glyphTextBubble.hide();
-        charTextBubble.hide();
-        translationTextBubble.hide();
-        npcType = "";
-        deliveryDone = false;
-        finalDeliverySelection = "";
-        currentDeliverySelection = "";
-        customerDoneButton.hide();
-        ticketDestinationBox.currentText = "";
-        ticketDestinationBox.editable = true;
-        ticketApproved = false;
-      }
 
-      if (item.identifier == "handbook-page"){
-        scene = "handbook";
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+        if (item.identifier == "handbook-page"){
+          scene = "handbook";
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+            }
+          }
+          pageNum = cNPC_TYPES.indexOf(npcType);
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+            }
           }
         }
-        pageNum = cNPC_TYPES.indexOf(npcType);
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+
+        if (item.identifier.substring(0, 8) == "delivery"){
+          if (!deliveryDone){
+            currentDeliverySelection = item.identifier.substring(9);
           }
         }
       }
+    });
+    if (noButtonClicked) currentDeliverySelection = "";
 
-      if (item.identifier.substring(0, 8) == "delivery"){
-        if (!deliveryDone){
-          currentDeliverySelection = item.identifier.substring(9);
+    all_skippable.forEach((item) => {
+      item.skipIfClicked(mousePos.x, mousePos.y, scene);
+    });
+    all_skippable_anywhere.forEach((item) => {
+      item.skip(scene);
+    });
+    all_text_input_boxes.forEach((item) => {
+      item.check_clicked(mousePos.x, mousePos.y, scene);
+    });
+
+    catTalkDialogues.forEach((item) => {
+      if (item.is_clicked(mousePos.x, mousePos.y, scene)){
+        catTalkDialogueSelection = item.identifier;
+      }
+    });
+
+    activeCharInfo = null;
+    generalLanguageInput.currentText = "";
+    generalLanguageInput.hide();
+    let charGlyphInfo;
+    if (npcType != "eng"){
+      if (glyphNPCs.includes(npcType)){
+        charGlyphInfo = glyphTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
+        if (charGlyphInfo != -1){
+          if (npcTranslatedWords[npcType].includes(charGlyphInfo[3])){
+            console.log('already there');
+          } else {
+            activeCharInfo = charGlyphInfo;
+          }
+        }
+      } else {
+        charGlyphInfo = charTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
+        if (charGlyphInfo != -1){
+          if (npcTranslatedWords[npcType].includes(charGlyphInfo[3])){
+            console.log('already there');
+          } else {
+            activeCharInfo = charGlyphInfo;
+          }
         }
       }
     }
-  });
-  if (noButtonClicked) currentDeliverySelection = "";
-
-  all_skippable.forEach((item) => {
-    item.skipIfClicked(mousePos.x, mousePos.y, scene);
-  });
-  all_skippable_anywhere.forEach((item) => {
-    item.skip(scene);
-  });
-  all_text_input_boxes.forEach((item) => {
-    item.check_clicked(mousePos.x, mousePos.y, scene);
-  });
-
-  catTalkDialogues.forEach((item) => {
-    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
-      catTalkDialogueSelection = item.identifier;
+    if (activeCharInfo){
+      generalLanguageInput.show();
+      generalLanguageInput.editing = true;
+      generalLanguageInput.currentText = playerNPCTranslatedWords[npcType][activeCharInfo[2]].currentText;
     }
-  });
-
-  activeCharInfo = null;
-  generalLanguageInput.currentText = "";
-  generalLanguageInput.hide();
-  let charGlyphInfo;
-  if (npcType != "eng"){
-    if (glyphNPCs.includes(npcType)){
-      charGlyphInfo = glyphTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
-      if (charGlyphInfo != -1){
-        activeCharInfo = charGlyphInfo;
-      }
-    } else {
-      charGlyphInfo = charTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
-      if (charGlyphInfo != -1){
-        activeCharInfo = charGlyphInfo;
-      }
-    }
-  }
-  if (activeCharInfo){
-    generalLanguageInput.show();
-    generalLanguageInput.editing = true;
-    generalLanguageInput.currentText = playerNPCTranslatedWords[npcType][activeCharInfo[2]].currentText;
   }
 });
 
@@ -2205,114 +2281,270 @@ document.addEventListener("touchstart", function(e) {
   mousePos.x = (e.x-cvs.getBoundingClientRect().left) * xScale;
   mousePos.y = (e.y-cvs.getBoundingClientRect().top) * yScale;
   
-  mouseDown = true;
-  let noButtonClicked = true;
-  all_buttons.forEach((item) => {
-    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
-      noButtonClicked = false;
-      // check if nav change
-      if (item.identifier == "nav-handbook"){
-        scene = "handbook";
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
+  if (scene == "title"){
+    scene = "intro";
+  } else if (scene == "intro"){
+    if (introPart == "logo"){
+      if (currentIntroFrame < LogoImgs.length-1){
+        currentIntroFrame = LogoImgs.length-1;
+      } else {
+        introPart = "welcome";
+        introFrames = 1;
+        currentIntroFrame = 0;
       }
-      if (item.identifier == "nav-main") scene = "main";
-      if (item.identifier == "nav-delivery") scene = "delivery";
-      if (item.identifier == "nav-cat") scene = "cat";
+    } else if (introPart == "welcome"){
+      introPart = "proud";
+      introFrames = 1;
+      currentIntroFrame = 0;
+    } else if (introPart == "proud"){
+      introPart = "customers";
+      introFrames = 1;
+      currentIntroFrame = 0;
+    } else if (introPart == "customers"){
+      introPart = "handbook";
+      introFrames = 0;
+      currentIntroFrame = 0;
+    } else if (introPart == "handbook"){
+      introPart = "logo-reverse";
+      introFrames = 1;
+      currentIntroFrame = -7;
+    } else if (introPart == "logo-reverse"){
+      if (currentIntroFrame < LogoReverseImgs.length){
+        currentIntroFrame = LogoReverseImgs.length;
+      } else {
+        introPart = "done";
+        introFrames = 1;
+        currentIntroFrame = 0;
+        scene = "main";
+        startMusic.pause();
+        musicStarted = false;
+      }
+    }
+  } else {
+    mouseDown = true;
+    let noButtonClicked = true;
+    all_buttons.forEach((item) => {
+      if (item.is_clicked(mousePos.x, mousePos.y, scene)){
+        noButtonClicked = false;
+        // check if nav change
+        if (item.identifier == "nav-handbook"){
+          scene = "handbook";
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+            }
+          }
+        }
+        if (item.identifier == "nav-main") scene = "main";
+        if (item.identifier == "nav-delivery") scene = "delivery";
+        if (item.identifier == "nav-cat") scene = "cat";
+        if (item.identifier == "next-page"){
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+            }
+          }
+          pageNum++;
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+            }
+          }
+        } if (item.identifier == "prev-page"){
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+            }
+          }
+          
+          if (pageNum-1 >= 0){
+            pageNum--;
+          }
 
-      if (item.identifier == "next-page"){
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+            }
           }
         }
-        pageNum++;
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+
+        if (item.identifier == "close-profile"){
+          profileInfoBox.y = cSCREEN_HEIGHT;
+          profileInfoBox.startRunning();
+          closeProfileButton.hide();
+
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].show();
           }
-        }
-      } if (item.identifier == "prev-page"){
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+          if (taskType == "transportation ticket") writeTicket.show();
+          if (deliveryDone || ticketApproved){
+            customerDoneButton.show();
           }
-        }
+        } if (item.identifier == "show-profile"){
+          profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
+          profileInfoBox.restartText();
+          profileInfoBox.startRunning();
+          closeProfileButton.show();
+          
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].hide();
+          }
+          writeTicket.hide();
+          customerDoneButton.hide();
+        } 
+
+        if (item.identifier == "close-ticket"){
+          ticketInfoBox.y = cSCREEN_HEIGHT;
+          ticketInfoBox.startRunning();
+          closeTicketButton.hide();
+          submitTicketButton.hide();
+
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].show();
+          }
+          if (taskType == "transportation ticket") writeTicket.show();
+          if (deliveryDone || ticketApproved){
+            customerDoneButton.show();
+          }
+        } if (item.identifier == "write-ticket"){
+          ticketInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
+          ticketInfoBox.restartText();
+          ticketInfoBox.startRunning();
+          closeTicketButton.show();
+          submitTicketButton.show();
+          
+          for (let i = 0; i < all_main_nav_buttons.length; i++){
+            all_main_nav_buttons[i].hide();
+          }
+          writeTicket.hide();
+          customerDoneButton.hide();
+        } 
         
-        if (pageNum-1 >= 0){
-          pageNum--;
-        }
-
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
-          }
-        }
-      }
-
-      if (item.identifier == "close-profile"){
-        profileInfoBox.y = cSCREEN_HEIGHT;
-        profileInfoBox.startRunning();
-        closeProfileButton.hide();
-
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].show();
-        }
-        if (deliveryDone || ticketApproved){
+        if (item.identifier == "send-delivery"){
+          finalDeliverySelection = currentDeliverySelection;
+          deliveryDone = true;
           customerDoneButton.show();
         }
-      } if (item.identifier == "show-profile"){
-        profileInfoBox.y = cPROFILE_Y_START+cPROFILE_PADDING;
-        profileInfoBox.restartText();
-        profileInfoBox.startRunning();
-        closeProfileButton.show();
-        
-        for (let i = 0; i < all_main_nav_buttons.length; i++){
-          all_main_nav_buttons[i].hide();
+        if (item.identifier == "submit-ticket"){
+          ticketApproved = true;
+          ticketDestinationBox.prefilledText = ticketDestinationBox.currentText;
+          ticketDestinationBox.editable = false;
         }
-        customerDoneButton.hide();
-      }
+        if (item.identifier == "customer-done"){
+          // TODO: add ticket resets
+          numCustomersServed++;
+          if (numCustomersServed % 5 == 0){
+            numAvailableTranslations++;
+          }
+          if (taskType == "transportation ticket"){
+            if (ticketDestinationBox.prefilledText.toLowerCase() == deliveryDestination){
+              numCustomerSuccesses++;
+              alertText.startAlert("Correct Ticket!", "#00FF00");
+            } else {
+              if (cPLACE_NAMES.includes(ticketDestinationBox.prefilledText.toLowerCase())){
+                alertText.startAlert("Wrong destination location", "#FF0000");
+              } else {
+                alertText.startAlert("Invalid destination location", "#FF0000");
+              }
+    
+            }
+          } else {
+            if (finalDeliverySelection == deliveryDestination){
+              numCustomerSuccesses++;
+              alertText.startAlert("Successful delivery!", "#00FF00");
+            } else {
+              alertText.startAlert("Wrong delivery location", "#FF0000");
+    
+            }
+          }
+          npc_sprite_opts[npcType][npcVariation].hide();
+          package1.hide();
+          letter1.hide();
+          engTextBubble.hide();
+          glyphTextBubble.hide();
+          charTextBubble.hide();
+          translationTextBubble.hide();
+          npcType = "";
+          deliveryDone = false;
+          finalDeliverySelection = "";
+          currentDeliverySelection = "";
+          customerDoneButton.hide();
+          ticketDestinationBox.currentText = "";
+          ticketDestinationBox.editable = true;
+          ticketApproved = false;
+        }
 
-      if (item.identifier == "handbook-page"){
-        scene = "handbook";
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+        if (item.identifier == "handbook-page"){
+          scene = "handbook";
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].hide();
+            }
+          }
+          pageNum = cNPC_TYPES.indexOf(npcType);
+          if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
+            for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
+              npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+            }
           }
         }
-        pageNum = cNPC_TYPES.indexOf(npcType);
-        if (cNPC_TYPES[pageNum] != "eng" && pageNum < cNPC_TYPES.length){
-          for (let i = 0; i < npc_language_pages[cNPC_TYPES[pageNum]].length; i++){
-            npc_language_inputs[cNPC_TYPES[pageNum]][i].show();
+
+        if (item.identifier.substring(0, 8) == "delivery"){
+          if (!deliveryDone){
+            currentDeliverySelection = item.identifier.substring(9);
           }
         }
       }
+    });
+    if (noButtonClicked) currentDeliverySelection = "";
 
-      if (item.identifier.substring(0, 8) == "delivery"){
-        currentDeliverySelection = item.identifier.substring(9);
+    all_skippable.forEach((item) => {
+      item.skipIfClicked(mousePos.x, mousePos.y, scene);
+    });
+    all_skippable_anywhere.forEach((item) => {
+      item.skip(scene);
+    });
+    all_text_input_boxes.forEach((item) => {
+      item.check_clicked(mousePos.x, mousePos.y, scene);
+    });
+
+    catTalkDialogues.forEach((item) => {
+      if (item.is_clicked(mousePos.x, mousePos.y, scene)){
+        catTalkDialogueSelection = item.identifier;
+      }
+    });
+
+    activeCharInfo = null;
+    generalLanguageInput.currentText = "";
+    generalLanguageInput.hide();
+    let charGlyphInfo;
+    if (npcType != "eng"){
+      if (glyphNPCs.includes(npcType)){
+        charGlyphInfo = glyphTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
+        if (charGlyphInfo != -1){
+          if (npcTranslatedWords[npcType].includes(charGlyphInfo[3])){
+            console.log('already there');
+          } else {
+            activeCharInfo = charGlyphInfo;
+          }
+        }
+      } else {
+        charGlyphInfo = charTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, scene);
+        if (charGlyphInfo != -1){
+          if (npcTranslatedWords[npcType].includes(charGlyphInfo[3])){
+            console.log('already there');
+          } else {
+            activeCharInfo = charGlyphInfo;
+          }
+        }
       }
     }
-  });
-  if (noButtonClicked) currentDeliverySelection = "";
-
-  all_skippable.forEach((item) => {
-    item.skipIfClicked(mousePos.x, mousePos.y, scene);
-  });
-  all_skippable_anywhere.forEach((item) => {
-    item.skip(scene);
-  });
-  all_text_input_boxes.forEach((item) => {
-    item.check_clicked(mousePos.x, mousePos.y, scene);
-  });
-
-  catTalkDialogues.forEach((item) => {
-    if (item.is_clicked(mousePos.x, mousePos.y, scene)){
-      catTalkDialogueSelection = item.identifier;
+    if (activeCharInfo){
+      generalLanguageInput.show();
+      generalLanguageInput.editing = true;
+      generalLanguageInput.currentText = playerNPCTranslatedWords[npcType][activeCharInfo[2]].currentText;
     }
-  });
+  }
 });
 
 document.addEventListener("mouseup", function(e) {
@@ -2329,416 +2561,744 @@ document.addEventListener("touchend", function(e) {
   });
 });
 
+const LogoImgs = [];
+for (let i = 1; i <= 31; i++){
+  const img = new Image();
+  img.src = cBASE_IMG_DIR+"intro/Logo-"+i.toString()+".png";
+  LogoImgs.push(img);
+}
+const WelcomeImgs = [];
+for (let i = 1; i <= 3; i++){
+  const img = new Image();
+  img.src = cBASE_IMG_DIR+"intro/Welcome-"+i.toString()+".png";
+  WelcomeImgs.push(img);
+}
+const ProudImgs = [];
+for (let i = 1; i <= 21; i++){
+  const img = new Image();
+  img.src = cBASE_IMG_DIR+"intro/Proud-"+i.toString()+".png";
+  ProudImgs.push(img);
+}
+const CustomersImgs = [];
+for (let i = 1; i <= 3; i++){
+  const img = new Image();
+  img.src = cBASE_IMG_DIR+"intro/Customers-"+i.toString()+".png";
+  CustomersImgs.push(img);
+}
+const HandbookImgs = [];
+for (let i = 1; i <= 12; i++){
+  const img = new Image();
+  img.src = cBASE_IMG_DIR+"intro/Handbook-"+i.toString()+".png";
+  HandbookImgs.push(img);
+}
+const LogoReverseImgs = [];
+for (let i = 1; i <= 21; i++){
+  const img = new Image();
+  img.src = cBASE_IMG_DIR+"intro/Logo-reverse-"+i.toString()+".png";
+  LogoReverseImgs.push(img);
+}
+
+const TitleImgs = [];
+for (let i = 1; i <= 9; i++){
+  const img = new Image();
+  img.src = cBASE_IMG_DIR+"Title-"+i.toString()+".png";
+  TitleImgs.push(img);
+}
+let titleFrames = 0;
+let titleFrame = 0;
+
+if (npcType == ""){
+// first customer!
+npcType = "eng"
+deliveryDestination = getRandomChoice(cPLACE_NAMES);
+npcName = getRandomNPCName();
+npcMood = getRandomChoice(cNPC_MOODS);
+taskType = "package delivery";
+package1.show();
+npc_sprite_opts[npcType][npcVariation].show();
+
+// chat text
+let npcTextTemplate;
+npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType];
+engTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), true);
+engTextBubble.startRunning();
+translationTextBubble.hide();
+
+// profile
+profileText = "Name: <>\"";
+profileText += npcName;
+profileText += "\"<> <>Request Category: <>\"";
+profileText += taskType;
+profileText += "\"";
+
+profileInfoBox.text = profileText;
+
+if (taskType == "transportation ticket"){
+  writeTicket.show();
+} else {
+  writeTicket.hide();
+}
+}
+
+const startMusic = new Audio("sounds/start-theme.mp3");
+startMusic.loop = true;
+startMusic.volume = 0.3;
+const bgMusic = new Audio("sounds/main-theme.mp3");
+bgMusic.loop = true;
+bgMusic.volume = 0.3;
+
+const LogoImage = new Image();
+LogoImage.src = cBASE_IMG_DIR+"Logo.png";
+
+const PackagePage1 = new Image();
+PackagePage1.src = cBASE_IMG_DIR+"Package-pg1.png";
+const PackagePage2 = new Image();
+PackagePage2.src = cBASE_IMG_DIR+"Package-pg2.png";
+const LetterPage1 = new Image();
+LetterPage1.src = cBASE_IMG_DIR+"Letter-pg1.png";
+const LetterPage2 = new Image();
+LetterPage2.src = cBASE_IMG_DIR+"Letter-pg2.png";
+const TicketPage1 = new Image();
+TicketPage1.src = cBASE_IMG_DIR+"Ticket-pg1.png";
+const TicketPage2 = new Image();
+TicketPage2.src = cBASE_IMG_DIR+"Ticket-pg2.png";
+
+let musicStarted = false;
 
 console.log("Draw function");
 let buttonAnimFrameLoop = 0;
 function draw(){
+  if (scene == "title"){
+    titleFrames++;
+    if (titleFrames % 12 == 0) titleFrame++;
     ctx.fillStyle = "#1c1c32";
     ctx.fillRect(0, 0, cSCREEN_WIDTH, cSCREEN_HEIGHT);
-    
-    all_sprites.forEach((item) => {
-      item.draw(scene);
-    })
+    ctx.drawImage(TitleImgs[titleFrame % TitleImgs.length], 0, 0);
+  } else if (scene == "intro"){
+    if (!musicStarted){
+      startMusic.play();
+      musicStarted = true;
+    }
 
+    ctx.fillStyle = "#3A3B41";
+    ctx.fillRect(0, 0, cSCREEN_WIDTH, cSCREEN_HEIGHT);
+    introFrames++;
 
-    // updates
-    if (scene == "main"){
-      ctx.fillStyle = "#817c7a";
-      ctx.fillRect(0, cDESK_Y_START, cSCREEN_WIDTH, cDESK_HEIGHT);
-      
-      // ctx.fillStyle = "#78f6ff";
-      // ctx.fillRect(cSCREEN_WIDTH-cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_Y_START+cPROFILE_PADDING, cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_HEIGHT+cPROFILE_PADDING);
+    // console.log(currentIntroFrame);
 
-      // check if new customer
-      if (npcType == ""){
-        // new customer!
-        npcType = getRandomChoice(cNPC_TYPES);
-        deliveryDestination = getRandomChoice(cPLACE_NAMES);
-        if (glyphNPCs.includes(npcType)){
-          npcName = getRandomNPCGlyphName(npcVocab[npcType]);
+    if (introPart == "logo"){
+      if (introFrames % 5 == 0) currentIntroFrame++;
+      if (introFrames == 40*5){
+        introPart = "welcome";
+        introFrames = 1;
+        currentIntroFrame = 0;
+      } else {
+        if (currentIntroFrame >= LogoImgs.length-1){
+          ctx.drawImage(LogoImgs[LogoImgs.length-1], 0, 0);
         } else {
-          npcName = getRandomNPCName();
+          ctx.drawImage(LogoImgs[currentIntroFrame % LogoImgs.length], 0, 0);
         }
+      }
+    } if (introPart == "welcome"){
+      if (introFrames % 10 == 0) currentIntroFrame++;
+      if (introFrames >= 150){
+        introPart = "proud";
+        introFrames = 1;
+        currentIntroFrame = 0;
+      } else {
+        ctx.drawImage(WelcomeImgs[currentIntroFrame % WelcomeImgs.length], 0, 0);
+      }
+    } if (introPart == "proud"){
+      if (introFrames % 15 == 0) currentIntroFrame++;
+      if (currentIntroFrame == 21){
+        introPart = "customers";
+        introFrames = 1;
+        currentIntroFrame = 0;
+      } else {
+        ctx.drawImage(ProudImgs[currentIntroFrame % ProudImgs.length], 0, 0);
+      }
+    } if (introPart == "customers"){
+      if (introFrames % 10 == 0) currentIntroFrame++;
+      if (introFrames == 250){
+        introPart = "handbook";
+        introFrames = 0;
+        currentIntroFrame = 0;
+      } else {
+        ctx.drawImage(CustomersImgs[currentIntroFrame % CustomersImgs.length], 0, 0);
+      }
+    } if (introPart == "handbook"){
+      if (introFrames % 7 == 0) currentIntroFrame++;
+      if (introFrames == 250){
+        introPart = "logo-reverse";
+        introFrames = 1;
+        currentIntroFrame = -7;
+      } else {
+        ctx.drawImage(HandbookImgs[currentIntroFrame % HandbookImgs.length], 0, 0);
+      }
+    } if (introPart == "logo-reverse"){
+      if (introFrames % 5 == 0) currentIntroFrame++;
+      if (currentIntroFrame == 30){
+        introPart = "done";
+        introFrames = 1;
+        currentIntroFrame = 0;
+        scene = "main";
+        startMusic.pause();
+        musicStarted = false;
+      } else {
+        if (currentIntroFrame <= 0){
+          ctx.drawImage(LogoReverseImgs[0], 0, 0);
+        } else if (currentIntroFrame >= LogoReverseImgs.length){
+          ctx.drawImage(LogoReverseImgs[LogoReverseImgs.length-1], 0, 0);
+        } else {
+          ctx.drawImage(LogoReverseImgs[currentIntroFrame % LogoReverseImgs.length], 0, 0);
+        }
+      }
+    }
+  } else {
+      if (!musicStarted){
+        bgMusic.play();
+        musicStarted = true;
+      }
+      ctx.fillStyle = "#1c1c32";
+      ctx.fillRect(0, 0, cSCREEN_WIDTH, cSCREEN_HEIGHT);
 
-        npcMood = getRandomChoice(cNPC_MOODS);
+      if (scene == "cat"){
+        ctx.drawImage(bookshelfImg, 0, 0, cSCREEN_WIDTH*0.9, cSCREEN_HEIGHT*0.8);
+        ctx.fillStyle = "#1c1c32AA";
+        ctx.fillRect(0, 0, cSCREEN_WIDTH, cSCREEN_HEIGHT);
+      }
+      
+      all_sprites.forEach((item) => {
+        item.draw(scene);
+      })
+
+
+      // updates
+      if (scene == "main"){
+        ctx.fillStyle = "#817c7a";
+        ctx.fillRect(0, cDESK_Y_START, cSCREEN_WIDTH, cDESK_HEIGHT);
         
-        taskType = getRandomChoice(cTASK_TYPES);
-        console.log(taskType);
-        if (taskType == "package delivery") package1.show();
-        if (taskType == "letter delivery") letter1.show();
-        taskHandlingType = getRandomChoice(cTASK_HANDLING_TYPES);
+        // ctx.fillStyle = "#78f6ff";
+        // ctx.fillRect(cSCREEN_WIDTH-cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_Y_START+cPROFILE_PADDING, cPROFILE_WIDTH-cPROFILE_PADDING, cPROFILE_HEIGHT+cPROFILE_PADDING);
 
-        npcVariation = randrange(0, npc_sprite_opts[npcType].length);
-
-        npc_sprite_opts[npcType][npcVariation].show();
-
-        // chat text
-        let npcTextTemplate;
-        let npcText = "";
-        let translatedText = "";
-        if (npcType == "eng"){
-          npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType];
-          engTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), true);
-          engTextBubble.startRunning();
-        } else if (glyphNPCs.includes(npcType)){
-          npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType]
-          glyphTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), npcType, true);
-          glyphTextBubble.startRunning();
-          
-          npcText = npcTextTemplate.replace("[]", deliveryDestination);
-          let temp = npcText.split(", ");
-          for (let i = 0; i < temp.length; i++){
-            if (npcTranslatedWords[npcType].includes(temp[i])){
-              translatedText += npcTranslations[npcType][temp[i]];
-            } else {
-              if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
-                translatedText += "...";
-              } else {
-                translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
-              }
-            }
-            translatedText += " "
-          }
-        } else {
-          npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType];
-          if (npcType == "mnem"){
-            npcText = npcTextTemplate.replace("[]", mnemPlaceNames[deliveryDestination]);
-            charTextBubble.resetText(npcTextTemplate.replace("[]", mnemPlaceNames[deliveryDestination]), npcType, true);
+        // check if new customer
+        if (npcType == ""){
+          // new customer!
+          npcType = getRandomChoice(cNPC_TYPES);
+          deliveryDestination = getRandomChoice(cPLACE_NAMES);
+          if (glyphNPCs.includes(npcType)){
+            npcName = getRandomNPCGlyphName(npcVocab[npcType]);
           } else {
-            npcText = npcTextTemplate.replace("[]", kishPlaceNames[deliveryDestination]);
-            charTextBubble.resetText(npcTextTemplate.replace("[]", kishPlaceNames[deliveryDestination]), npcType, true);
+            npcName = getRandomNPCName();
           }
 
-          let temp = npcText.split("");
-          for (let i = 0; i < temp.length; i++){
-            if (npcTranslatedWords[npcType].includes(temp[i])){
-              translatedText += npcTranslations[npcType][temp[i]];
-            } else {
-              if (temp[i] == " "){
-                translatedText += " ";
-              } else if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
-                translatedText += "?";
+          npcMood = getRandomChoice(cNPC_MOODS);
+          
+          taskType = getRandomChoice(cTASK_TYPES);
+          console.log(taskType);
+          if (taskType == "package delivery") package1.show();
+          if (taskType == "letter delivery") letter1.show();
+          taskHandlingType = getRandomChoice(cTASK_HANDLING_TYPES);
+
+          npcVariation = randrange(0, npc_sprite_opts[npcType].length);
+
+          npc_sprite_opts[npcType][npcVariation].show();
+
+          // chat text
+          let npcTextTemplate;
+          let npcText = "";
+          let translatedText = "";
+          if (npcType == "eng"){
+            npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType];
+            engTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), true);
+            engTextBubble.startRunning();
+          } else if (glyphNPCs.includes(npcType)){
+            npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType]
+            glyphTextBubble.resetText(npcTextTemplate.replace("[]", deliveryDestination), npcType, true);
+            glyphTextBubble.startRunning();
+            
+            npcText = npcTextTemplate.replace("[]", deliveryDestination);
+            let temp = npcText.split(", ");
+            for (let i = 0; i < temp.length; i++){
+              if (npcTranslatedWords[npcType].includes(temp[i])){
+                translatedText += npcTranslations[npcType][temp[i]];
               } else {
-                translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+                if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+                  translatedText += "...";
+                } else {
+                  translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+                }
               }
+              translatedText += " "
             }
-            translatedText += " "
+          } else {
+            npcTextTemplate = npcTextCatalog[npcType][taskType+taskHandlingType];
+            if (npcType == "mnem"){
+              npcText = npcTextTemplate.replace("[]", mnemPlaceNames[deliveryDestination]);
+              charTextBubble.resetText(npcTextTemplate.replace("[]", mnemPlaceNames[deliveryDestination]), npcType, true);
+            } else {
+              npcText = npcTextTemplate.replace("[]", kishPlaceNames[deliveryDestination]);
+              charTextBubble.resetText(npcTextTemplate.replace("[]", kishPlaceNames[deliveryDestination]), npcType, true);
+            }
+
+            let temp = npcText.split("");
+            for (let i = 0; i < temp.length; i++){
+              if (npcTranslatedWords[npcType].includes(temp[i])){
+                translatedText += npcTranslations[npcType][temp[i]];
+              } else {
+                if (temp[i] == " "){
+                  translatedText += " ";
+                } else if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+                  translatedText += "?";
+                } else {
+                  translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+                }
+              }
+              translatedText += " "
+            }
+            charTextBubble.startRunning();
           }
-          charTextBubble.startRunning();
+
+          if (npcType == "eng"){
+            translationTextBubble.hide();
+          } else {
+            translationTextBubble.resetText(translatedText, true);
+            translationTextBubble.startRunning();
+          }
+
+          // profile
+          profileText = "Name: <>\"";
+          profileText += npcName;
+          profileText += "\"<> <>Request Category: <>\"";
+          profileText += taskType;
+          profileText += "\"";
+
+          profileInfoBox.text = profileText;
+
+          if (taskType == "transportation ticket"){
+            writeTicket.show();
+          } else {
+            writeTicket.hide();
+          }
         }
 
-        // TODO: translate
-        if (npcType == "eng"){
-          translationTextBubble.hide();
-        } else {
-          translationTextBubble.resetText(translatedText, true);
-          translationTextBubble.startRunning();
+        if (glyphNPCs.includes(npcType)) {
+          translationTextBubble.y = glyphTextBubble.getEndY()+45;
+        } else if (npcType != "eng"){
+          translationTextBubble.y = charTextBubble.getEndY()+45;
         }
-
-        // profile
-        profileText = "Name: <>\"";
-        profileText += npcName;
-        profileText += "\"<> <>Request Category: <>\"";
-        profileText += taskType;
-        profileText += "\"";
-
-        profileInfoBox.text = profileText;
-
+      } if (scene == "delivery"){
         if (taskType == "transportation ticket"){
-          writeTicket.show();
+          nulandDelivery.clickedOn = false;
+          kiskusDelivery.clickedOn = false;
+          mnemoniteDelivery.clickedOn = false;
+          muglyDelivery.clickedOn = false;
+          plugloDelivery.clickedOn = false;
+          ignusDelivery.clickedOn = false;
+          sendDeliveryButton.hide();
+        } else if (deliveryDone){
+          ctx.fillStyle = "#78f6ff";
+          ctx.fillRect(30, 30, cSCREEN_WIDTH*0.47, 100);
+    
+          ctx.fillStyle = "#000";
+          ctx.font = "55px sans-serif";
+          ctx.fillText("DELIVERED TO: "+finalDeliverySelection, 42, 105);
+          // ctx.fillText(finalDeliverySelection, 400, 105);
+    
+          nulandDelivery.clickedOn = false;
+          kiskusDelivery.clickedOn = false;
+          mnemoniteDelivery.clickedOn = false;
+          muglyDelivery.clickedOn = false;
+          plugloDelivery.clickedOn = false;
+          ignusDelivery.clickedOn = false;
+          if (finalDeliverySelection == "nuland") nulandDelivery.clickedOn = true;
+          if (finalDeliverySelection == "kiskus") kiskusDelivery.clickedOn = true;
+          if (finalDeliverySelection == "mnemonite") mnemoniteDelivery.clickedOn = true;
+          if (finalDeliverySelection == "mugly") muglyDelivery.clickedOn = true;
+          if (finalDeliverySelection == "pluglo") plugloDelivery.clickedOn = true;
+          if (finalDeliverySelection == "ignus") ignusDelivery.clickedOn = true;
+          sendDeliveryButton.hide();
         } else {
-          writeTicket.hide();
+          ctx.fillStyle = "#78f6ff";
+          ctx.fillRect(30, 30, cSCREEN_WIDTH*0.45, 100);
+    
+          ctx.fillStyle = "#000";
+          ctx.font = "55px sans-serif";
+          ctx.fillText("DELIVER TO: "+currentDeliverySelection, 42, 105);
+          // ctx.fillText(currentDeliverySelection, 400, 105);
+    
+          if (currentDeliverySelection == "nuland") nulandDelivery.clickedOn = true;
+          if (currentDeliverySelection == "kiskus") kiskusDelivery.clickedOn = true;
+          if (currentDeliverySelection == "mnemonite") mnemoniteDelivery.clickedOn = true;
+          if (currentDeliverySelection == "mugly") muglyDelivery.clickedOn = true;
+          if (currentDeliverySelection == "pluglo") plugloDelivery.clickedOn = true;
+          if (currentDeliverySelection == "ignus") ignusDelivery.clickedOn = true;
+          if (currentDeliverySelection == "") sendDeliveryButton.hide();
+          if (currentDeliverySelection != "") sendDeliveryButton.show();
+    
+          if (parseInt(buttonAnimFrameLoop/10) == 0){
+            sendDeliveryButton.defaultColor = "#33d021";
+          } else if (parseInt(buttonAnimFrameLoop/10) == 1){
+            sendDeliveryButton.defaultColor = "#4bff37";
+          } else if (parseInt(buttonAnimFrameLoop/10) == 2){
+            sendDeliveryButton.defaultColor = "#6eff5e";
+          } else if (parseInt(buttonAnimFrameLoop/10) == 3){
+            sendDeliveryButton.defaultColor = "#4bff37";
+          } else {
+            buttonAnimFrameLoop = 0;
+            sendDeliveryButton.defaultColor = "#33d021";
+          }
+    
+          buttonAnimFrameLoop++;
         }
-      }
+      } if (scene == "cat"){
+        ctx.fillStyle = "#817c7a";
+        ctx.fillRect(0, cDESK_Y_START, cSCREEN_WIDTH, cDESK_HEIGHT);
+        
+        if (catTalkDialogueSelection != ""){
+          if (catTalkDialogueSelection == "cat-talk-hello"){
+            catTalkStage = "intro-pt1";
+            catTalkBubbles.resetText(["heya kiddo", "new employee, huh?"], true);
+            catTalkBubbles.startRunning();
+            catTalkOptHello.hide();
+          } else if (catTalkDialogueSelection == "cat-talk-not-new"){
+            catTalkStage = "intro-pt2";
+            catTalkBubbles.resetText(["cool garbeanzo then", "my name's kert. that's short for kool queuekumbert III"], true);
+            catTalkBubbles.startRunning();
 
-      if (glyphNPCs.includes(npcType)) {
-        translationTextBubble.y = glyphTextBubble.getEndY()+45;
-      } else if (npcType != "eng"){
-        translationTextBubble.y = charTextBubble.getEndY()+45;
-      }
-    } if (scene == "delivery"){
-      if (taskType == "transportation ticket"){
-        nulandDelivery.clickedOn = false;
-        kiskusDelivery.clickedOn = false;
-        mnemoniteDelivery.clickedOn = false;
-        muglyDelivery.clickedOn = false;
-        plugloDelivery.clickedOn = false;
-        ignusDelivery.clickedOn = false;
-        sendDeliveryButton.hide();
-      } else if (deliveryDone){
-        ctx.fillStyle = "#78f6ff";
-        ctx.fillRect(30, 30, cSCREEN_WIDTH*0.47, 100);
-  
-        ctx.fillStyle = "#000";
-        ctx.font = "55px sans-serif";
-        ctx.fillText("DELIVERED TO: "+finalDeliverySelection, 42, 105);
-        // ctx.fillText(finalDeliverySelection, 400, 105);
-  
-        nulandDelivery.clickedOn = false;
-        kiskusDelivery.clickedOn = false;
-        mnemoniteDelivery.clickedOn = false;
-        muglyDelivery.clickedOn = false;
-        plugloDelivery.clickedOn = false;
-        ignusDelivery.clickedOn = false;
-        if (finalDeliverySelection == "nuland") nulandDelivery.clickedOn = true;
-        if (finalDeliverySelection == "kiskus") kiskusDelivery.clickedOn = true;
-        if (finalDeliverySelection == "mnemonite") mnemoniteDelivery.clickedOn = true;
-        if (finalDeliverySelection == "mugly") muglyDelivery.clickedOn = true;
-        if (finalDeliverySelection == "pluglo") plugloDelivery.clickedOn = true;
-        if (finalDeliverySelection == "ignus") ignusDelivery.clickedOn = true;
-        sendDeliveryButton.hide();
-      } else {
-        ctx.fillStyle = "#78f6ff";
-        ctx.fillRect(30, 30, cSCREEN_WIDTH*0.45, 100);
-  
-        ctx.fillStyle = "#000";
-        ctx.font = "55px sans-serif";
-        ctx.fillText("DELIVER TO: "+currentDeliverySelection, 42, 105);
-        // ctx.fillText(currentDeliverySelection, 400, 105);
-  
-        if (currentDeliverySelection == "nuland") nulandDelivery.clickedOn = true;
-        if (currentDeliverySelection == "kiskus") kiskusDelivery.clickedOn = true;
-        if (currentDeliverySelection == "mnemonite") mnemoniteDelivery.clickedOn = true;
-        if (currentDeliverySelection == "mugly") muglyDelivery.clickedOn = true;
-        if (currentDeliverySelection == "pluglo") plugloDelivery.clickedOn = true;
-        if (currentDeliverySelection == "ignus") ignusDelivery.clickedOn = true;
-        if (currentDeliverySelection == "") sendDeliveryButton.hide();
-        if (currentDeliverySelection != "") sendDeliveryButton.show();
-  
-        if (parseInt(buttonAnimFrameLoop/10) == 0){
-          sendDeliveryButton.defaultColor = "#33d021";
-        } else if (parseInt(buttonAnimFrameLoop/10) == 1){
-          sendDeliveryButton.defaultColor = "#4bff37";
-        } else if (parseInt(buttonAnimFrameLoop/10) == 2){
-          sendDeliveryButton.defaultColor = "#6eff5e";
-        } else if (parseInt(buttonAnimFrameLoop/10) == 3){
-          sendDeliveryButton.defaultColor = "#4bff37";
+            catTalkOptNewEmp.hide();
+            catTalkOptNotNewEmp.hide();
+          } else if (catTalkDialogueSelection == "cat-talk-new"){
+            catTalkStage = "intro-pt2";
+            catTalkBubbles.resetText(["welcome to the team pal", "my name's kert. that's short for kool queuekumbert III"], true);
+            catTalkBubbles.startRunning();
+
+            catTalkOptNewEmp.hide();
+            catTalkOptNotNewEmp.hide();
+          } else if (catTalkDialogueSelection == "cat-talk-weird"){
+            catTalkStage = "intro-pt2-weird";
+            catTalkBubbles.resetText(["mhm, and all rocks are round yeah?", "anyways, how can i help ya?"], true);
+            catTalkBubbles.startRunning();
+
+            catTalkOptHelp1.hide();
+            catTalkOptHelp2.hide();
+            catTalkOptWhat.hide();
+          } else if (catTalkDialogueSelection == "cat-talk-help"){
+            if (catTalkStage == "intro-pt2-help-customers"){
+              catTalkStage = "idle";
+            } else {
+              catTalkStage = "intro-pt2-help";
+            }
+            catTalkBubbles.resetText(["it's a pretty straightforward job", "if a customer give you a package or letter, deliver it to the right place", "if they want a transportation ticket, write em a ticket"], true);
+            catTalkBubbles.startRunning();
+
+            catTalkOptHelp1.hide();
+            catTalkOptHelp2.hide();
+            catTalkOptWhat.hide();
+          } else if (catTalkDialogueSelection == "cat-talk-help-customers"){
+            if (catTalkStage == "intro-pt2-help"){
+              catTalkStage = "idle";
+            } else {
+              catTalkStage = "intro-pt2-help-customers";
+            }
+            catTalkBubbles.resetText(["i suppose you aren't fluent in every language, huh?", "i'm sure you can figure it out", "try making notes in your handbook for what you think different characters and words mean", "i'll give you some translations for every 5 customer requests", "i put some in your notebook to start ya off"], true);
+            catTalkBubbles.startRunning();
+
+            // translate 1 of each language
+            let wordToTranslate;
+            allTranslated = true;
+            for (let i = 0; i < cNPC_TYPES.length; i++){
+              if (cNPC_TYPES[i] != "eng"){
+                if (npcVocab[cNPC_TYPES[i]].length != npcTranslatedWords[cNPC_TYPES[i]].length){
+                  allTranslated = false;
+                  wordToTranslate = chooseRandomWordToTranslate(npcVocab[cNPC_TYPES[i]], npcTranslatedWords[cNPC_TYPES[i]]);
+                  npcTranslatedWords[cNPC_TYPES[i]].push(wordToTranslate);
+                  playerNPCTranslatedWords[cNPC_TYPES[i]][wordToTranslate].editable = false;
+                  playerNPCTranslatedWords[cNPC_TYPES[i]][wordToTranslate].prefilledText = npcTranslations[cNPC_TYPES[i]][wordToTranslate];
+                }
+              }
+            }
+
+            catTalkOptHelp1.hide();
+            catTalkOptHelp2.hide();
+            catTalkOptWhat.hide();
+          } else if (catTalkDialogueSelection == "cat-talk-translate"){
+            if (numAvailableTranslations > 0){
+              // translate 1 of each language
+              let wordToTranslate;
+              allTranslated = true;
+              for (let i = 0; i < cNPC_TYPES.length; i++){
+                if (cNPC_TYPES[i] != "eng"){
+                  if (npcVocab[cNPC_TYPES[i]].length != npcTranslatedWords[cNPC_TYPES[i]].length){
+                    allTranslated = false;
+                    wordToTranslate = chooseRandomWordToTranslate(npcVocab[cNPC_TYPES[i]], npcTranslatedWords[cNPC_TYPES[i]]);
+                    npcTranslatedWords[cNPC_TYPES[i]].push(wordToTranslate);
+                    playerNPCTranslatedWords[cNPC_TYPES[i]][wordToTranslate].editable = false;
+                    playerNPCTranslatedWords[cNPC_TYPES[i]][wordToTranslate].prefilledText = npcTranslations[cNPC_TYPES[i]][wordToTranslate];
+                  }
+                }
+              }
+              numAvailableTranslations = 0;
+              if (allTranslated){
+                catTalkBubbles.resetText(getRandomChoice([["your handbook's all filled out bud", "no need for me to write you any more"], ["there's nothing left for me to fill out, pal", "you've talked to a lot of customers", "nice"]]), true);
+              } else {
+                catTalkBubbles.resetText(getRandomChoice([["sure thing bud", "i've updated some stuff in your handbook"], ["cool beans pal", "i wrote some stuff in your handbook"]]), true);
+              }
+
+              let translatedText = "";
+              if (glyphNPCs.includes(npcType)){
+                npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", deliveryDestination);
+                let temp = npcText.split(", ");
+                for (let i = 0; i < temp.length; i++){
+                  if (npcTranslatedWords[npcType].includes(temp[i])){
+                    translatedText += npcTranslations[npcType][temp[i]];
+                  } else {
+                    if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+                      translatedText += "...";
+                    } else {
+                      translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+                      translatedText += "?";
+                    }
+                  }
+                  translatedText += " "
+                }
+            
+                translationTextBubble.resetText(translatedText);
+                translationTextBubble.startRunning();
+                translationTextBubble.skip("main");
+              } else if (npcType != ""){
+                if (npcType == "mnem"){
+                  npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", mnemPlaceNames[deliveryDestination]);
+                } else {
+                  npcText = npcTextCatalog[npcType][taskType+taskHandlingType].replace("[]", kishPlaceNames[deliveryDestination]);
+                }
+            
+                let temp = npcText.split("");
+                for (let i = 0; i < temp.length; i++){
+                  if (npcTranslatedWords[npcType].includes(temp[i])){
+                    translatedText += npcTranslations[npcType][temp[i]];
+                  } else {
+                    if (temp[i] == " "){
+                      translatedText += " ";
+                    } else if (playerNPCTranslatedWords[npcType][temp[i]].currentText == ""){
+                      translatedText += "?";
+                    } else {
+                      translatedText += playerNPCTranslatedWords[npcType][temp[i]].currentText;
+                    }
+                  }
+                  translatedText += " "
+                }
+            
+                translationTextBubble.resetText(translatedText);
+                translationTextBubble.startRunning();
+                translationTextBubble.skip("main");
+              }
+            } else {
+              if (allTranslated){
+                catTalkBubbles.resetText(getRandomChoice([["your handbook's all filled out bud", "no need for me to write you any more"], ["there's nothing left for me to fill out, pal", "you've talked to a lot of customers", "nice"]]), true);
+              } else {
+                catTalkBubbles.resetText(["i'll give you some translations every 5 customers", "come back after the next "+(5-(numCustomersServed % 5).toString()+" customers")], true);
+              }
+            }
+            catTalkBubbles.startRunning();
+            dialogueHideDelay = 100;
+
+            catTalkOptTranslate.hide();
+            catTalkOptRandom.hide();
+          } else if (catTalkDialogueSelection == "cat-talk-random"){
+            catTalkBubbles.resetText(getRandomChoice(catRandomDialogues), true);
+            catTalkBubbles.startRunning();
+            dialogueHideDelay = 100;
+            
+            catTalkOptTranslate.hide();
+            catTalkOptRandom.hide();
+          }
+          catTalkDialogueSelection = "";
+        }
+
+        if (catTalkBubbles.isRunning()){
+          guy.hide();
+          guyTalk.show();
         } else {
-          buttonAnimFrameLoop = 0;
-          sendDeliveryButton.defaultColor = "#33d021";
+          guy.show();
+          guyTalk.hide();
+          if (catTalkStage == "intro-pt1"){
+            catTalkOptNewEmp.show();
+            catTalkOptNotNewEmp.show();
+          } else if (catTalkStage == "intro-pt2"){
+            catTalkOptHelp1.show();
+            catTalkOptHelp2.show();
+            catTalkOptWhat.show();
+          } else if (catTalkStage == "intro-pt2-weird"){
+            catTalkOptHelp1.show();
+            catTalkOptHelp2.show();
+          } else if (catTalkStage == "intro-pt2-help"){
+            catTalkOptHelp2.show();
+          } else if (catTalkStage == "intro-pt2-help-customers"){
+            catTalkOptHelp1.show();
+          } else if (catTalkStage == "idle"){
+            if (dialogueHideDelay < 0){
+              catTalkBubbles.hide();
+            } else {
+              dialogueHideDelay--;
+            }
+            catTalkOptTranslate.show();
+            catTalkOptRandom.show()
+          }
         }
-  
-        buttonAnimFrameLoop++;
-      }
-    } if (scene == "cat"){
-      ctx.fillStyle = "#817c7a";
-      ctx.fillRect(0, cDESK_Y_START, cSCREEN_WIDTH, cDESK_HEIGHT);
-      
-      if (catTalkDialogueSelection != ""){
-        if (catTalkDialogueSelection == "cat-talk-hello"){
-          catTalkStage = "intro-pt1";
-          catTalkBubbles.resetText(["heya kiddo", "new employee, huh?"], true);
-          catTalkBubbles.startRunning();
-          catTalkOptHello.hide();
-        } else if (catTalkDialogueSelection == "cat-talk-not-new"){
-          catTalkStage = "intro-pt2";
-          catTalkBubbles.resetText(["cool garbeanzo then", "my name's kert. that's short for kool queuekumbert III"], true);
-          catTalkBubbles.startRunning();
 
-          catTalkOptNewEmp.hide();
-          catTalkOptNotNewEmp.hide();
-        } else if (catTalkDialogueSelection == "cat-talk-new"){
-          catTalkStage = "intro-pt2";
-          catTalkBubbles.resetText(["welcome to the team pal", "my name's kert. that's short for kool queuekumbert III"], true);
-          catTalkBubbles.startRunning();
-
-          catTalkOptNewEmp.hide();
-          catTalkOptNotNewEmp.hide();
-        } else if (catTalkDialogueSelection == "cat-talk-weird"){
-          catTalkStage = "intro-pt2-weird";
-          catTalkBubbles.resetText(["mhm, and all rocks are round yeah?", "anyways, how can i help ya?"], true);
-          catTalkBubbles.startRunning();
-
-          catTalkOptHelp1.hide();
-          catTalkOptHelp2.hide();
-          catTalkOptWhat.hide();
-        } else if (catTalkDialogueSelection == "cat-talk-help"){
-          if (catTalkStage == "intro-pt2-help-customers"){
-            catTalkStage = "idle";
-          } else {
-            catTalkStage = "intro-pt2-help";
-          }
-          catTalkBubbles.resetText(["it's a pretty straightforward job", "if a customer give you a package or letter, deliver it to the right place", "if they want a transportation ticket, write em a ticket"], true);
-          catTalkBubbles.startRunning();
-
-          catTalkOptHelp1.hide();
-          catTalkOptHelp2.hide();
-          catTalkOptWhat.hide();
-        } else if (catTalkDialogueSelection == "cat-talk-help-customers"){
-          if (catTalkStage == "intro-pt2-help"){
-            catTalkStage = "idle";
-          } else {
-            catTalkStage = "intro-pt2-help-customers";
-          }
-          catTalkBubbles.resetText(["i suppose you aren't fluent in every language, huh?", "i'm sure you can figure it out", "try making notes in your handbook for what you think different characters and words mean", "i'll give you some translations for every 5 customer requests", "i put some in your notebook to start ya off"], true);
-          catTalkBubbles.startRunning();
-
-          catTalkOptHelp1.hide();
-          catTalkOptHelp2.hide();
-          catTalkOptWhat.hide();
-        } else if (catTalkDialogueSelection == "cat-talk-translate"){
-          // TODO: check if the handbook is complete
-          if (numAvailableTranslations > 0){
-            // TODO: update handbook
-            numAvailableTranslations = 0;
-            catTalkBubbles.resetText(getRandomChoice([["sure thing bud", "i've updated some stuff in your handbook"], ["cool beans pal", "i wrote some stuff in your handbook"]]), true);
-          } else {
-            catTalkBubbles.resetText(["i'll give you some translations every 5 customers", "come back after the next "+(5-(numCustomersServed % 5).toString()+" customers")], true);
-          }
-          catTalkBubbles.startRunning();
-          dialogueHideDelay = 100;
-
-          catTalkOptTranslate.hide();
-          catTalkOptRandom.hide();
-        } else if (catTalkDialogueSelection == "cat-talk-random"){
-          catTalkBubbles.resetText(getRandomChoice(catRandomDialogues), true);
-          catTalkBubbles.startRunning();
-          dialogueHideDelay = 100;
-          
-          catTalkOptTranslate.hide();
-          catTalkOptRandom.hide();
-        }
-        catTalkDialogueSelection = "";
+        catTalkDialogues.forEach((item) => {
+          item.draw(scene);
+        });
       }
 
-      if (catTalkBubbles.isRunning()){
-        guy.hide();
-        guyTalk.show();
-      } else {
-        guy.show();
-        guyTalk.hide();
-        if (catTalkStage == "intro-pt1"){
-          catTalkOptNewEmp.show();
-          catTalkOptNotNewEmp.show();
-        } else if (catTalkStage == "intro-pt2"){
-          catTalkOptHelp1.show();
-          catTalkOptHelp2.show();
-          catTalkOptWhat.show();
-        } else if (catTalkStage == "intro-pt2-weird"){
-          catTalkOptHelp1.show();
-          catTalkOptHelp2.show();
-        } else if (catTalkStage == "intro-pt2-help"){
-          catTalkOptHelp2.show();
-        } else if (catTalkStage == "intro-pt2-help-customers"){
-          catTalkOptHelp1.show();
-        } else if (catTalkStage == "idle"){
-          if (dialogueHideDelay < 0){
-            catTalkBubbles.hide();
+      all_popups.forEach((item) => {
+        item.draw(scene);
+      })
+      if (scene == "main"){
+        closeProfileButton.x = profileInfoBox.currX+profileInfoBox.w-65;
+        closeProfileButton.y = profileInfoBox.currY+15;
+        
+        closeTicketButton.x = ticketInfoBox.currX+ticketInfoBox.w-65;
+        closeTicketButton.y = ticketInfoBox.currY+15;
+        submitTicketButton.x = ticketInfoBox.currX+(cPROFILE_PADDING*1.5);
+        submitTicketButton.y = ticketInfoBox.currY+ticketInfoBox.w-15-cNAV_BTN_HEIGHT;
+        ticketDestinationBox.x = ticketInfoBox.currX+(cPROFILE_PADDING*1.5);
+        ticketDestinationBox.y = ticketInfoBox.currY+ticketInfoBox.w-15-(cNAV_BTN_HEIGHT*4);
+        if (ticketDestinationBox.currentText == ""){
+          submitTicketButton.hide();
+        } else if (ticketApproved){
+          submitTicketButton.hide();
+          ctx.strokeStyle = '#008113';
+          ctx.lineWidth = 5;
+          ctx.strokeRect(submitTicketButton.x, submitTicketButton.y, submitTicketButton.w, submitTicketButton.h);
+
+          ctx.font = "75px sans-serif";
+          ctx.fillStyle = '#008113';
+          ctx.fillText("APPROVED", submitTicketButton.x+(submitTicketButton.w/6), submitTicketButton.y+(submitTicketButton.h/2)+25);
+        } else {
+          submitTicketButton.show();
+        }
+
+        // check mouse over letter
+        let charGlyphInfo = -1;
+        if (npcType != "eng"){
+          if (glyphNPCs.includes(npcType)){
+            charGlyphInfo = glyphTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, "main");
+            if (charGlyphInfo != -1){
+              ctx.fillStyle = "#a2e9ffa9";
+              ctx.fillRect(charGlyphInfo[0], charGlyphInfo[1], cGLYPH_HEIGHT, cGLYPH_HEIGHT);
+            }
           } else {
-            dialogueHideDelay--;
+            charGlyphInfo = charTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, "main");
+            if (charGlyphInfo != -1){
+              ctx.fillStyle = "#a2e9ffa9";
+              ctx.fillRect(charGlyphInfo[0], charGlyphInfo[1], cGLYPH_HEIGHT*0.75, cGLYPH_HEIGHT);
+            }
           }
-          catTalkOptTranslate.show();
-          catTalkOptRandom.show()
+        }
+        if (activeCharInfo){
+          ctx.fillStyle = "#a2e9ffa9";
+          if (glyphNPCs.includes(npcType)){
+            ctx.fillRect(activeCharInfo[0], activeCharInfo[1], cGLYPH_HEIGHT, cGLYPH_HEIGHT);
+          } else {
+            ctx.fillRect(activeCharInfo[0], activeCharInfo[1], cGLYPH_HEIGHT*0.75, cGLYPH_HEIGHT);
+          }
+        }
+        generalLanguageInput.draw(scene);
+      }
+
+      if (scene == "handbook"){
+        ctx.fillStyle = "#2b2b2b";
+        ctx.fillRect((cPAGE_X_START+cPAGE_WIDTH)-1, cPAGE_Y_START, 2, cPAGE_HEIGHT);
+
+        if (pageNum < cNPC_TYPES.length){
+          rightPage.resetText("");
+          let npcPageType = cNPC_TYPES[pageNum];
+          // draw profile image
+          ctx.strokeStyle = "#2b2b2b";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(cPAGE_X_START+50, cPAGE_Y_START+50, cPAGE_WIDTH*0.35, cPAGE_WIDTH*0.35);
+          ctx.drawImage(npc_profile_pics[npcPageType], cPAGE_X_START+50, cPAGE_Y_START+50, cPAGE_WIDTH*0.35, cPAGE_WIDTH*0.35);
+
+          if (leftPage.text != npc_profile_txt[npcPageType]){
+            leftPage.resetText(npc_profile_txt[npcPageType]);
+            leftPage.startRunning();
+            leftPage.finishAnim();
+          }
+
+          if (pageNum == 0){
+            prevPage.hide();
+          } else {
+            prevPage.show();
+          }
+
+          if (npcPageType != "eng"){
+            for (let i = 0; i < npc_language_pages[npcPageType].length; i++){
+              npc_language_pages[npcPageType][i].draw(true);
+            }
+          }
+        } else {
+          // instructions pages
+          prevPage.show();
+          if (pageNum == cNPC_TYPES.length) {
+            // package delivery
+            ctx.drawImage(PackagePage1, cPAGE_X_START, cPAGE_Y_START);
+            ctx.drawImage(PackagePage2, cPAGE_X_START+750, cPAGE_Y_START);
+            nextPage.show();
+          } if (pageNum == cNPC_TYPES.length+1) {
+            // letter delivery
+            ctx.drawImage(LetterPage1, cPAGE_X_START, cPAGE_Y_START);
+            ctx.drawImage(LetterPage2, cPAGE_X_START+750, cPAGE_Y_START);
+            nextPage.show();
+          } if (pageNum == cNPC_TYPES.length+2) {
+            // ticket writing
+            ctx.drawImage(TicketPage1, cPAGE_X_START, cPAGE_Y_START);
+            ctx.drawImage(TicketPage2, cPAGE_X_START+750, cPAGE_Y_START);
+            nextPage.hide();
+          }
         }
       }
 
-      catTalkDialogues.forEach((item) => {
+      // nav bar
+      ctx.fillStyle = "#515151";
+      ctx.fillRect(0, cSCREEN_HEIGHT-cNAV_HEIGHT, cSCREEN_WIDTH, cNAV_HEIGHT);
+
+      all_text_input_boxes.forEach((item) => {
         item.draw(scene);
       });
-    }
 
-    all_popups.forEach((item) => {
-      item.draw(scene);
-    })
-    if (scene == "main"){
-      closeProfileButton.x = profileInfoBox.currX+profileInfoBox.w-65;
-      closeProfileButton.y = profileInfoBox.currY+15;
-      
-      closeTicketButton.x = ticketInfoBox.currX+ticketInfoBox.w-65;
-      closeTicketButton.y = ticketInfoBox.currY+15;
-      submitTicketButton.x = ticketInfoBox.currX+(cPROFILE_PADDING*1.5);
-      submitTicketButton.y = ticketInfoBox.currY+ticketInfoBox.w-15-cNAV_BTN_HEIGHT;
-      ticketDestinationBox.x = ticketInfoBox.currX+(cPROFILE_PADDING*1.5);
-      ticketDestinationBox.y = ticketInfoBox.currY+ticketInfoBox.w-15-(cNAV_BTN_HEIGHT*4);
-      if (ticketDestinationBox.currentText == ""){
-        submitTicketButton.hide();
-      } else if (ticketApproved){
-        submitTicketButton.hide();
-        ctx.strokeStyle = '#008113';
-        ctx.lineWidth = 5;
-        ctx.strokeRect(submitTicketButton.x, submitTicketButton.y, submitTicketButton.w, submitTicketButton.h);
+      all_buttons.forEach((item) => {
+        item.draw(scene);
+      });
 
-        ctx.font = "75px sans-serif";
-        ctx.fillStyle = '#008113';
-        ctx.fillText("APPROVED", submitTicketButton.x+(submitTicketButton.w/6), submitTicketButton.y+(submitTicketButton.h/2)+25);
-      } else {
-        submitTicketButton.show();
-      }
+      if (scene == "main"){
+        ctx.fillStyle = "#00000077";
+        ctx.fillRect(cSCREEN_WIDTH/2-200, cDESK_Y_START-100, 400, 200);
 
-      // check mouse over letter
-      let charGlyphInfo = -1;
-      if (npcType != "eng"){
-        if (glyphNPCs.includes(npcType)){
-          charGlyphInfo = glyphTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, "main");
-          if (charGlyphInfo != -1){
-            ctx.fillStyle = "#a2e9ffa9";
-            ctx.fillRect(charGlyphInfo[0], charGlyphInfo[1], cGLYPH_HEIGHT, cGLYPH_HEIGHT);
-          }
+        ctx.drawImage(LogoImage, cSCREEN_WIDTH/2-200, cDESK_Y_START-125, 200, 150);
+
+        let empText = "Employee success rate: ";
+        ctx.font = "35px sans-serif";
+        ctx.fillStyle = "#FFF";
+        ctx.fillText(empText, cSCREEN_WIDTH/2-190, cDESK_Y_START+10);
+        
+        if (numCustomersServed == 0){
+          empText = "0%";
+          ctx.font = "50px sans-serif";
+          ctx.fillStyle = "#F00";
         } else {
-          charGlyphInfo = charTextBubble.check_mouse_over_char(mousePos.x, mousePos.y, "main");
-          if (charGlyphInfo != -1){
-            ctx.fillStyle = "#a2e9ffa9";
-            ctx.fillRect(charGlyphInfo[0], charGlyphInfo[1], cGLYPH_HEIGHT*0.75, cGLYPH_HEIGHT);
+          empText = parseInt((numCustomerSuccesses/numCustomersServed)*100).toString()+"%";
+          ctx.font = "50px sans-serif";
+          if (parseInt((numCustomerSuccesses/numCustomersServed)*100) > 60){
+            ctx.fillStyle = "#0F0";
+          } else {
+            ctx.fillStyle = "#F00";
           }
         }
+        ctx.fillText(empText, cSCREEN_WIDTH/2-100, cDESK_Y_START+75);
       }
-      if (activeCharInfo){
-        ctx.fillStyle = "#a2e9ffa9";
-        if (glyphNPCs.includes(npcType)){
-          ctx.fillRect(activeCharInfo[0], activeCharInfo[1], cGLYPH_HEIGHT, cGLYPH_HEIGHT);
-        } else {
-          ctx.fillRect(activeCharInfo[0], activeCharInfo[1], cGLYPH_HEIGHT*0.75, cGLYPH_HEIGHT);
-        }
-      }
-      generalLanguageInput.draw(scene);
-    }
-
-    if (scene == "handbook"){
-      ctx.fillStyle = "#2b2b2b";
-      ctx.fillRect((cPAGE_X_START+cPAGE_WIDTH)-1, cPAGE_Y_START, 2, cPAGE_HEIGHT);
-
-      if (pageNum < cNPC_TYPES.length){
-        rightPage.resetText("");
-        let npcPageType = cNPC_TYPES[pageNum];
-        // draw profile image
-        ctx.strokeStyle = "#2b2b2b";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(cPAGE_X_START+50, cPAGE_Y_START+50, cPAGE_WIDTH*0.35, cPAGE_WIDTH*0.35);
-        ctx.drawImage(npc_profile_pics[npcPageType], cPAGE_X_START+50, cPAGE_Y_START+50, cPAGE_WIDTH*0.35, cPAGE_WIDTH*0.35);
-
-        if (leftPage.text != npc_profile_txt[npcPageType]){
-          leftPage.resetText(npc_profile_txt[npcPageType]);
-          leftPage.startRunning();
-          leftPage.finishAnim();
-        }
-
-        if (pageNum == 0){
-          prevPage.hide();
-        } else {
-          prevPage.show();
-        }
-
-        if (npcPageType != "eng"){
-          for (let i = 0; i < npc_language_pages[npcPageType].length; i++){
-            npc_language_pages[npcPageType][i].draw(true);
-          }
-        }
-      } else {
-        // instructions pages
-      }
-    }
-
-    // nav bar
-    ctx.fillStyle = "#515151";
-    ctx.fillRect(0, cSCREEN_HEIGHT-cNAV_HEIGHT, cSCREEN_WIDTH, cNAV_HEIGHT);
-
-    all_text_input_boxes.forEach((item) => {
-      item.draw(scene);
-    });
-
-    all_buttons.forEach((item) => {
-      item.draw(scene);
-    });
+  }
 }
 
 console.log("Running");
